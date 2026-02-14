@@ -72,34 +72,7 @@ COPY --from=frontend-builder /app/frontend/.next/standalone ./
 COPY --from=frontend-builder /app/frontend/.next/static ./.next/static
 
 # ─── Supervisor Config ──────────────────────────────────────
-COPY <<'EOF' /etc/supervisor/conf.d/familia.conf
-[supervisord]
-nodaemon=true
-logfile=/dev/null
-logfile_maxbytes=0
-user=root
-
-[program:backend]
-command=python -m uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1 --log-level info
-directory=/app/backend
-autostart=true
-autorestart=true
-stdout_logfile=/dev/fd/1
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/fd/2
-stderr_logfile_maxbytes=0
-
-[program:frontend]
-command=node server.js
-directory=/app/frontend
-environment=PORT="%(ENV_PORT)s",HOSTNAME="0.0.0.0",NODE_ENV="production"
-autostart=true
-autorestart=true
-stdout_logfile=/dev/fd/1
-stdout_logfile_maxbytes=0
-stderr_logfile=/dev/fd/2
-stderr_logfile_maxbytes=0
-EOF
+COPY supervisord.conf /etc/supervisor/conf.d/familia.conf
 
 WORKDIR /app
 
