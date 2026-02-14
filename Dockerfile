@@ -73,10 +73,8 @@ COPY --from=frontend-builder /app/frontend/.next/standalone ./
 # Copy static files built by Next.js
 COPY --from=frontend-builder /app/frontend/.next/static ./.next/static
 
-# Copy public folder from source (not from build output - it's not included in standalone)
-# Create empty public if it doesn't exist in source
+# Create public folder (empty is fine - Next.js doesn't need it for runtime)
 RUN mkdir -p ./public
-COPY --from=frontend-builder /app/frontend/public/* ./public/ 2>/dev/null || true
 
 # ─── Supervisor Config ──────────────────────────────────────
 COPY supervisord.conf /etc/supervisor/conf.d/familia.conf

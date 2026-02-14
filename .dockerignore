@@ -1,6 +1,5 @@
-# Dependencies & build artifacts
+# Dependencies & build artifacts (but allow .next for multi-stage build)
 frontend/node_modules/
-frontend/.next/
 backend/__pycache__/
 backend/venv/
 backend/models/__pycache__/
