@@ -1,0 +1,21 @@
+# ─── Familia Backend Dependencies ──────────────────────────────
+# Core
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Supabase (auth + database — no separate JWT lib needed)
+supabase>=2.3.0
+
+# HTTP client (used for Google Translate, Deepgram, Cartesia REST calls)
+httpx>=0.25.0
+
+# WebSockets (real-time chat)
+websockets>=12.0
+
+# File uploads & processing
+python-multipart>=0.0.6
+aiofiles>=23.2.0
+Pillow>=10.2.0
