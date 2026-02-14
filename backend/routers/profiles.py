@@ -1,11 +1,65 @@
 """Profile management router."""
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel
 from models.schemas import ProfileUpdate, LanguageInput
 from services.supabase_client import get_supabase
 from services.auth_service import get_current_user_id, get_optional_user_id
 
 router = APIRouter(prefix="/profiles", tags=["Profiles"])
+
+# Valid roles
+VALID_ROLES = ["mother", "father", "son", "daughter", "mentor", "student", 
+               "brother", "sister", "friend", "grandparent", "grandchild", 
+               "sibling", "penpal"]
+
+
+class SetRoleRequest(BaseModel):
+    offering_role: str  # What role the user wants to BE
+    seeking_role: Optional[str] = None  # What role they're looking for (optional)
+
+
+@router.post("/me/role")
+async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_current_user_id)):
+    """Set the current user's role for matching."""
+    db = get_supabase()
+    
+    role_lower = req.offering_role.lower().strip()
+    if role_lower not in VALID_ROLES:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid role '{req.offering_role}'. Valid roles: {', '.join(VALID_ROLES)}"
+        )
+    
+    # Get current matching_preferences
+    profile = db.table("profiles").select("matching_preferences").eq("id", current_user).execute()
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Update matching_preferences with the role (using JSONB which exists)
+    prefs = profile.data[0].get("matching_preferences") or {}
+    prefs["offering_role"] = role_lower
+    prefs["preferred_roles"] = [role_lower]
+    if req.seeking_role:
+        prefs["seeking_role"] = req.seeking_role.lower().strip()
+    
+    update_data = {
+        "matching_preferences": prefs,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    result = db.table("profiles").update(update_data).eq("id", current_user).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Failed to update profile")
+    
+    return {
+        "success": True,
+        "offering_role": role_lower,
+        "seeking_role": req.seeking_role.lower().strip() if req.seeking_role else None,
+        "message": f"You are now registered as a '{role_lower}'"
+    }
 
 
 @router.get("/{user_id}")
@@ -45,6 +99,32 @@ async def get_profile(user_id: str, current_user: str = Depends(get_optional_use
         "active_relationships": len(rels.data or [])
     }
 
+
+# ─── Current User Endpoints (/me) ───────────────────────────────────────────────
+
+@router.get("/me")
+async def get_my_profile(current_user: str = Depends(get_current_user_id)):
+    """Get the current user's profile."""
+    return await get_profile(current_user, current_user)
+
+
+@router.put("/me")
+async def update_my_profile(update: ProfileUpdate, current_user: str = Depends(get_current_user_id)):
+    """Update the current user's profile."""
+    db = get_supabase()
+    
+    update_data = {k: v for k, v in update.model_dump().items() if v is not None}
+    update_data["updated_at"] = datetime.utcnow().isoformat()
+    
+    result = db.table("profiles").update(update_data).eq("id", current_user).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    return result.data[0]
+
+
+# ─── User ID Endpoints ───────────────────────────────────────────────────────────
 
 @router.put("/{user_id}")
 async def update_profile(user_id: str, update: ProfileUpdate, current_user: str = Depends(get_current_user_id)):
@@ -219,3 +299,43 @@ async def mark_notification_read(user_id: str, notification_id: str, current_use
     }).eq("id", notification_id).eq("user_id", user_id).execute()
     
     return {"status": "read"}
+
+
+@router.put("/{user_id}/notifications/read-all")
+async def mark_all_notifications_read(user_id: str, current_user: str = Depends(get_current_user_id)):
+    """Mark all notifications as read for a user."""
+    if current_user != user_id:
+        raise HTTPException(status_code=403, detail="Cannot modify another user's notifications")
+    
+    db = get_supabase()
+    
+    db.table("notifications").update({
+        "is_read": True,
+        "read_at": datetime.utcnow().isoformat()
+    }).eq("user_id", user_id).eq("is_read", False).execute()
+    
+    return {"status": "all_read"}
+
+
+@router.delete("/{user_id}/notifications/{notification_id}")
+async def delete_notification(user_id: str, notification_id: str, current_user: str = Depends(get_current_user_id)):
+    """Delete a single notification."""
+    if current_user != user_id:
+        raise HTTPException(status_code=403, detail="Cannot modify another user's notifications")
+    
+    db = get_supabase()
+    db.table("notifications").delete().eq("id", notification_id).eq("user_id", user_id).execute()
+    
+    return {"status": "deleted"}
+
+
+@router.delete("/{user_id}/notifications")
+async def clear_all_notifications(user_id: str, current_user: str = Depends(get_current_user_id)):
+    """Clear all notifications for a user."""
+    if current_user != user_id:
+        raise HTTPException(status_code=403, detail="Cannot modify another user's notifications")
+    
+    db = get_supabase()
+    db.table("notifications").delete().eq("user_id", user_id).execute()
+    
+    return {"status": "cleared"}

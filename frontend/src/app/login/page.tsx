@@ -97,13 +97,13 @@ export default function LoginPage() {
             <span className="text-2xl font-bold tracking-tight">Familia</span>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Welcome Back 👋</h1>
-          <p className="text-white/40">Your global family is waiting for you</p>
+          <p className="text-muted">Your global family is waiting for you</p>
         </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="glass-card space-y-5">
           <div>
-            <label className="text-sm text-white/50 mb-1.5 block font-medium">Email</label>
+            <label className="text-sm text-muted mb-1.5 block font-medium">Email</label>
             <input
               type="email"
               value={form.email}
@@ -117,7 +117,7 @@ export default function LoginPage() {
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-sm text-white/50 font-medium">Password</label>
+              <label className="text-sm text-muted font-medium">Password</label>
               <button type="button" className="text-xs text-familia-400 hover:text-familia-300 transition">
                 Forgot password?
               </button>
@@ -135,7 +135,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-[var(--text-secondary)] transition"
               >
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
@@ -172,10 +172,10 @@ export default function LoginPage() {
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/[0.06]" />
+              <div className="w-full border-t border-themed" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="px-3 bg-[#12121f] text-white/25">or try instantly</span>
+              <span className="px-3 bg-[var(--bg-primary)] text-subtle">or try instantly</span>
             </div>
           </div>
 
@@ -183,7 +183,7 @@ export default function LoginPage() {
           <motion.button
             type="button"
             onClick={handleDemo}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] text-white/60 hover:text-white/80 transition-all text-sm font-medium"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-themed bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] text-muted hover:text-[var(--text-secondary)] transition-all text-sm font-medium"
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
           >
@@ -193,12 +193,12 @@ export default function LoginPage() {
         </form>
 
         {/* Social proof */}
-        <div className="mt-6 flex items-center justify-center gap-6 text-xs text-white/25">
+        <div className="mt-6 flex items-center justify-center gap-6 text-xs text-subtle">
           <span className="flex items-center gap-1.5"><Shield className="w-3 h-3" /> Verified humans only</span>
           <span className="flex items-center gap-1.5"><Heart className="w-3 h-3" /> 12K+ bonds formed</span>
         </div>
 
-        <p className="text-center text-white/35 text-sm mt-6">
+        <p className="text-center text-muted text-sm mt-6">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-familia-400 hover:text-familia-300 font-medium transition">
             Join Familia

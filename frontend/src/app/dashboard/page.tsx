@@ -117,23 +117,35 @@ export default function DashboardPage() {
                   >
                     <div className="p-3 border-b border-themed flex items-center justify-between">
                       <span className="font-semibold text-sm">Notifications</span>
-                      <button onClick={() => setShowNotifications(false)}><X className="w-4 h-4 text-muted" /></button>
+                      <div className="flex items-center gap-2">
+                        <Link href="/notifications" onClick={() => setShowNotifications(false)} className="text-xs text-familia-400 hover:underline">View All</Link>
+                        <button onClick={() => setShowNotifications(false)}><X className="w-4 h-4 text-muted" /></button>
+                      </div>
                     </div>
                     {notifications.length === 0 ? (
                       <div className="p-6 text-center text-muted text-sm">
                         <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />No notifications yet
                       </div>
                     ) : (
-                      notifications.slice(0, 5).map((notif) => (
-                        <div key={notif.id} onClick={() => handleNotificationClick(notif)}
-                          className={`p-3 border-b border-themed hover:bg-[var(--bg-card-hover)] transition cursor-pointer ${!notif.is_read ? 'bg-familia-500/5' : ''}`}>
-                          <div className="flex items-center justify-between">
-                            <div className="font-medium text-sm">{notif.title}</div>
-                            {!notif.is_read && <div className="w-2 h-2 rounded-full bg-familia-400" />}
+                      <>
+                        {notifications.slice(0, 5).map((notif) => (
+                          <div key={notif.id} onClick={() => handleNotificationClick(notif)}
+                            className={`p-3 border-b border-themed hover:bg-[var(--bg-card-hover)] transition cursor-pointer ${!notif.is_read ? 'bg-familia-500/5' : ''}`}>
+                            <div className="flex items-center justify-between">
+                              <div className="font-medium text-sm">{notif.title}</div>
+                              {!notif.is_read && <div className="w-2 h-2 rounded-full bg-familia-400" />}
+                            </div>
+                            <div className="text-xs text-muted mt-0.5">{notif.body}</div>
                           </div>
-                          <div className="text-xs text-muted mt-0.5">{notif.body}</div>
-                        </div>
-                      ))
+                        ))}
+                        {notifications.length > 5 && (
+                          <Link href="/notifications" onClick={() => setShowNotifications(false)}>
+                            <div className="p-3 text-center text-sm text-familia-400 hover:bg-[var(--bg-card-hover)] transition cursor-pointer font-medium">
+                              View all {notifications.length} notifications →
+                            </div>
+                          </Link>
+                        )}
+                      </>
                     )}
                   </motion.div>
                 )}

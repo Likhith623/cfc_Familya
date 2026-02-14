@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, MessageCircle, Gamepad2, User } from 'lucide-react';
+import { Home, Users, MessageCircle, Gamepad2, User, Bell } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 const NAV_ITEMS = [
@@ -32,7 +32,7 @@ export default function BottomNav() {
       className="fixed bottom-0 left-0 right-0 z-50 pb-safe"
     >
       <div className="mx-4 mb-4">
-        <div className="max-w-md mx-auto bg-[var(--bg-card)]/90 backdrop-blur-xl border border-[var(--border-color)] rounded-2xl shadow-2xl shadow-black/40">
+        <div className="max-w-md mx-auto bg-[var(--bg-card)] backdrop-blur-xl border border-[var(--border-color)] rounded-2xl shadow-2xl shadow-black/20">
           <div className="flex items-center justify-around py-2">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');

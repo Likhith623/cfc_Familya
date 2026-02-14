@@ -62,10 +62,10 @@ export default function ContestsPage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <div className="sticky top-0 glass border-b border-white/5 z-20">
+      <div className="sticky top-0 glass border-b border-themed z-20">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/dashboard">
-            <motion.button className="p-2 rounded-lg hover:bg-white/5 transition" whileTap={{ scale: 0.95 }}>
+            <motion.button className="p-2 rounded-lg hover:bg-[var(--bg-card-hover)] transition" whileTap={{ scale: 0.95 }}>
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
           </Link>
@@ -86,7 +86,7 @@ export default function ContestsPage() {
                     className="transition-all duration-1000 ease-linear"
                   />
                 </svg>
-                <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${timeLeft < 30 ? 'text-red-400' : 'text-white/60'}`}>
+                <span className={`absolute inset-0 flex items-center justify-center text-[10px] font-bold ${timeLeft < 30 ? 'text-red-400' : 'text-muted'}`}>
                   {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
                 </span>
               </div>
@@ -133,7 +133,7 @@ export default function ContestsPage() {
                       </div>
                       <span className="text-sm">You</span>
                     </div>
-                    <div className="text-white/20">VS</div>
+                    <div className="text-subtle">VS</div>
                     <div className="flex items-center gap-2">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center text-lg">
                         {ROLE_EMOJIS['mother']}
@@ -143,21 +143,21 @@ export default function ContestsPage() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-3 mb-5 text-center text-sm">
-                    <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/5">
+                    <div className="bg-[var(--bg-card-hover)] rounded-xl p-3 ring-1 ring-[var(--border-color)]">
                       <div className="text-lg font-bold text-amber-400">5</div>
-                      <div className="text-[10px] text-white/30 mt-0.5">Questions</div>
+                      <div className="text-[10px] text-muted mt-0.5">Questions</div>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/5">
+                    <div className="bg-[var(--bg-card-hover)] rounded-xl p-3 ring-1 ring-[var(--border-color)]">
                       <div className="text-lg font-bold text-amber-400">2:00</div>
-                      <div className="text-[10px] text-white/30 mt-0.5">Time Limit</div>
+                      <div className="text-[10px] text-muted mt-0.5">Time Limit</div>
                     </div>
-                    <div className="bg-white/5 rounded-xl p-3 ring-1 ring-white/5">
+                    <div className="bg-[var(--bg-card-hover)] rounded-xl p-3 ring-1 ring-[var(--border-color)]">
                       <div className="text-lg font-bold text-amber-400">50</div>
-                      <div className="text-[10px] text-white/30 mt-0.5">Max Points</div>
+                      <div className="text-[10px] text-muted mt-0.5">Max Points</div>
                     </div>
                   </div>
 
-                  <p className="text-xs text-white/40 mb-4">
+                  <p className="text-xs text-muted mb-4">
                     Questions are generated from your real conversations. How well do you know each other?
                   </p>
 
@@ -175,7 +175,7 @@ export default function ContestsPage() {
 
               {/* Past contests */}
               <h3 className="font-bold mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-white/40" />
+                <Clock className="w-4 h-4 text-muted" />
                 Past Results
               </h3>
               <div className="space-y-3">
@@ -185,7 +185,7 @@ export default function ContestsPage() {
                 ].map((result, i) => (
                   <motion.div
                     key={i}
-                    className="rounded-xl p-[1px] bg-gradient-to-r from-white/10 via-white/5 to-white/10 hover:from-familia-500/30 hover:to-bond-500/30 transition-all duration-300"
+                    className="rounded-xl p-[1px] bg-gradient-to-r from-[var(--border-color)] via-[var(--border-color)] to-[var(--border-color)] hover:from-familia-500/30 hover:to-bond-500/30 transition-all duration-300"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
@@ -195,17 +195,17 @@ export default function ContestsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="font-medium text-sm">{result.partner}</div>
-                          <div className="text-xs text-white/30">{result.date}</div>
+                          <div className="text-xs text-muted">{result.date}</div>
                         </div>
                         <div className="flex items-center gap-4 text-center">
                           <div>
                             <div className="font-bold text-familia-400">{result.yourScore}</div>
-                            <div className="text-[10px] text-white/30">You</div>
+                            <div className="text-[10px] text-muted">You</div>
                           </div>
-                          <div className="text-white/20">vs</div>
+                          <div className="text-subtle">vs</div>
                           <div>
                             <div className="font-bold text-green-400">{result.partnerScore}</div>
-                            <div className="text-[10px] text-white/30">Partner</div>
+                            <div className="text-[10px] text-muted">Partner</div>
                           </div>
                           <div className="ml-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-400 text-xs font-medium ring-1 ring-amber-500/20">
                             {result.synchrony}% sync
@@ -230,7 +230,7 @@ export default function ContestsPage() {
                     className={`flex-1 h-2 rounded-full transition-all ${
                       i < currentQ ? 'bg-gradient-to-r from-familia-500 to-bond-500' :
                       i === currentQ ? 'bg-familia-400 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
-                      'bg-white/10'
+                      'bg-[var(--border-color)]'
                     }`}
                     initial={i <= currentQ ? { scaleX: 0 } : {}}
                     animate={{ scaleX: 1 }}
@@ -240,7 +240,7 @@ export default function ContestsPage() {
               </div>
 
               <div className="flex items-center justify-between mb-3 text-sm">
-                <span className="text-white/40 font-medium">Question {currentQ + 1} of {MOCK_QUESTIONS.length}</span>
+                <span className="text-muted font-medium">Question {currentQ + 1} of {MOCK_QUESTIONS.length}</span>
                 <motion.span className="flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-full" key={score} initial={{ scale: 1.2 }} animate={{ scale: 1 }}>
                   <Star className="w-3.5 h-3.5 text-amber-400" />
                   <span className="font-bold text-amber-400 text-xs">{score} pts</span>
@@ -250,7 +250,7 @@ export default function ContestsPage() {
               {/* Question card */}
               <motion.div
                 key={`q-${currentQ}`}
-                className="glass-card mb-6 ring-1 ring-white/5 relative overflow-hidden"
+                className="glass-card mb-6 ring-1 ring-[var(--border-color)] relative overflow-hidden"
                 initial={{ opacity: 0, x: 50, rotateY: 15 }}
                 animate={{ opacity: 1, x: 0, rotateY: 0 }}
                 exit={{ opacity: 0, x: -50, rotateY: -15 }}
@@ -262,7 +262,7 @@ export default function ContestsPage() {
                     {currentQ + 1}
                   </span>
                   <div>
-                    <div className="text-[10px] text-white/25 mb-1 flex items-center gap-1">
+                    <div className="text-[10px] text-subtle mb-1 flex items-center gap-1">
                       <Sparkles className="w-3 h-3" />
                       {MOCK_QUESTIONS[currentQ].source}
                     </div>
@@ -286,7 +286,7 @@ export default function ContestsPage() {
                           showCorrect ? 'border-green-500/60 bg-green-500/10 shadow-[0_0_20px_-5px_rgba(34,197,94,0.3)]' :
                           showWrong ? 'border-red-500/60 bg-red-500/10 shadow-[0_0_20px_-5px_rgba(239,68,68,0.3)]' :
                           isSelected ? 'border-familia-500/50 bg-familia-500/10' :
-                          'border-white/5 bg-white/[0.02] hover:border-familia-500/30 hover:bg-white/5 hover:shadow-lg hover:shadow-familia-500/5'
+                          'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-familia-500/30 hover:bg-[var(--bg-card-hover)] hover:shadow-lg hover:shadow-familia-500/5'
                         }`}
                         whileHover={!showResult ? { scale: 1.02, x: 4 } : {}}
                         whileTap={!showResult ? { scale: 0.98 } : {}}
@@ -298,7 +298,7 @@ export default function ContestsPage() {
                           <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors ${
                             showCorrect ? 'bg-green-500/20 text-green-400' :
                             showWrong ? 'bg-red-500/20 text-red-400' :
-                            'bg-white/5 text-white/40'
+                            'bg-[var(--bg-card-hover)] text-muted'
                           }`}>
                             {String.fromCharCode(65 + i)}
                           </span>
@@ -334,31 +334,31 @@ export default function ContestsPage() {
               <motion.h2 className="text-3xl font-bold mb-2 gradient-text" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
                 {totalCorrect >= 4 ? 'Amazing!' : totalCorrect >= 3 ? 'Great job!' : 'Keep bonding!'}
               </motion.h2>
-              <motion.p className="text-white/40 mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>You really know Maria! Your bond is growing stronger</motion.p>
+              <motion.p className="text-muted mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>You really know Maria! Your bond is growing stronger</motion.p>
 
               <div className="relative max-w-sm mx-auto mb-8 rounded-2xl p-[1px] bg-gradient-to-br from-amber-500/50 via-familia-500/30 to-bond-500/50">
                 <div className="glass-card !rounded-[15px]">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 }}>
                       <div className="text-3xl font-bold text-amber-400">{score}</div>
-                      <div className="text-xs text-white/30 mt-1">Your Score</div>
+                      <div className="text-xs text-muted mt-1">Your Score</div>
                     </motion.div>
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5 }}>
                       <div className="text-3xl font-bold text-green-400">{totalCorrect}/{MOCK_QUESTIONS.length}</div>
-                      <div className="text-xs text-white/30 mt-1">Correct</div>
+                      <div className="text-xs text-muted mt-1">Correct</div>
                     </motion.div>
                     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.7 }}>
                       <div className="text-3xl font-bold text-familia-400">85%</div>
-                      <div className="text-xs text-white/30 mt-1">Synchrony</div>
+                      <div className="text-xs text-muted mt-1">Synchrony</div>
                     </motion.div>
                   </div>
 
-                  <motion.div className="mt-5 pt-4 border-t border-white/5" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}>
-                    <div className="text-xs text-white/30 mb-2">Bond Points Earned:</div>
+                  <motion.div className="mt-5 pt-4 border-t border-[var(--border-color)]" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}>
+                    <div className="text-xs text-muted mb-2">Bond Points Earned:</div>
                     <div className="flex items-center justify-center gap-2 bg-amber-500/5 rounded-xl py-2.5">
                       <Zap className="w-5 h-5 text-amber-400" />
                       <span className="font-bold text-lg text-amber-400">+{score + 5}</span>
-                      <span className="text-xs text-white/30">points (+5 synchrony bonus)</span>
+                      <span className="text-xs text-muted">points (+5 synchrony bonus)</span>
                     </div>
                   </motion.div>
                 </div>
@@ -379,7 +379,7 @@ export default function ContestsPage() {
                     setTimeLeft(120);
                     setShowResult(false);
                   }}
-                  className="px-4 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white/60 transition text-sm"
+                  className="px-4 py-3 rounded-xl border border-[var(--border-color)] text-muted hover:text-[var(--text-secondary)] transition text-sm"
                 >
                   Try Again
                 </button>

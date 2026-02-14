@@ -1,4 +1,4 @@
-// File: /Users/likhith./cfc_Familya/frontend/src/app/family-rooms/page.tsx
+// File: /Users/likhith./cfc_Familya_1/frontend/src/app/family-rooms/page.tsx
 import * as entry from '../../../../src/app/family-rooms/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

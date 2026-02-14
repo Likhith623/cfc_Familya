@@ -1,5 +1,6 @@
 """Matching router - Find and create bonds."""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
+from typing import Optional, List
 from datetime import datetime
 from models.schemas import MatchRequest
 from services.supabase_client import get_supabase
@@ -8,6 +9,105 @@ from services.auth_service import get_current_user_id
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
+# Valid roles constant
+VALID_ROLES = ["mother", "father", "son", "daughter", "mentor", "student", 
+               "brother", "sister", "friend", "grandparent", "grandchild", 
+               "sibling", "penpal"]
+
+
+# ─── Public Endpoints (No Auth Required) ───────────────────────────────────────
+
+@router.get("/browse/{role}")
+async def browse_by_role(role: str):
+    """Browse profiles offering a specific role. This is the MAIN search endpoint.
+    Searches both the dedicated 'role' column AND matching_preferences JSONB."""
+    db = get_supabase()
+    
+    role_lower = role.lower().strip()
+    
+    # Handle aliases
+    role_aliases = {
+        "sibling": ["brother", "sister", "sibling"],
+        "brother": ["brother", "sibling"],
+        "sister": ["sister", "sibling"],
+        "penpal": ["penpal", "friend"],
+    }
+    
+    search_roles = role_aliases.get(role_lower, [role_lower])
+    
+    if role_lower not in VALID_ROLES:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid role '{role}'. Valid roles: {', '.join(VALID_ROLES)}"
+        )
+    
+    # Get ALL profiles that aren't banned — search matching_preferences JSONB for role info
+    profiles = db.table("profiles") \
+        .select("id, display_name, country, city, avatar_config, is_verified, care_score, bio, matching_preferences") \
+        .eq("is_banned", False) \
+        .execute()
+    
+    matching_profiles = []
+    seen_ids = set()
+    
+    for profile in (profiles.data or []):
+        if profile["id"] in seen_ids:
+            continue
+            
+        # Check matching_preferences JSONB for role info
+        prefs = profile.get("matching_preferences") or {}
+        pref_offering = (prefs.get("offering_role") or "").lower().strip()
+        preferred_roles = [r.lower().strip() for r in (prefs.get("preferred_roles") or [])]
+        
+        # Check if any of the search roles match
+        is_match = False
+        matched_role = None
+        
+        for search_role in search_roles:
+            # Check matching_preferences.offering_role
+            if pref_offering == search_role:
+                is_match = True
+                matched_role = pref_offering
+                break
+            # Check matching_preferences.preferred_roles array
+            elif search_role in preferred_roles:
+                is_match = True
+                matched_role = search_role
+                break
+        
+        if is_match:
+            seen_ids.add(profile["id"])
+            matching_profiles.append({
+                "id": profile["id"],
+                "display_name": profile["display_name"],
+                "country": profile.get("country"),
+                "city": profile.get("city"),
+                "avatar_config": profile.get("avatar_config"),
+                "is_verified": profile.get("is_verified", False),
+                "care_score": profile.get("care_score", 0),
+                "bio": profile.get("bio"),
+                "offering_role": matched_role,
+                "seeking_role": prefs.get("seeking_role")
+            })
+    
+    # Sort by care_score descending, then verified first
+    matching_profiles.sort(key=lambda p: (p.get("is_verified", False), p.get("care_score", 0)), reverse=True)
+    
+    return {
+        "role": role_lower,
+        "count": len(matching_profiles),
+        "profiles": matching_profiles,
+        "searched_roles": search_roles
+    }
+
+
+@router.get("/browse-public/{role}")
+async def browse_by_role_public(role: str):
+    """Alias for browse endpoint (backwards compatibility)."""
+    return await browse_by_role(role)
+
+
+# ─── Authenticated Endpoints ───────────────────────────────────────────────────
 
 @router.post("/search")
 async def search_for_match(req: MatchRequest, user_id: str = Depends(get_current_user_id)):
@@ -139,6 +239,30 @@ async def cancel_matching(user_id: str, current_user: str = Depends(get_current_
         .execute()
     
     return {"status": "cancelled"}
+
+
+@router.get("/browse-all")
+async def browse_all_roles():
+    """Get counts of available profiles per role. Used for the role selection UI."""
+    db = get_supabase()
+
+    profiles_result = db.table("profiles") \
+        .select("id, matching_preferences") \
+        .eq("is_banned", False) \
+        .execute()
+
+    role_counts = {role: 0 for role in VALID_ROLES}
+    for profile in (profiles_result.data or []):
+        # Check matching_preferences JSONB for role info
+        prefs = profile.get("matching_preferences") or {}
+        offering = (prefs.get("offering_role") or "").lower().strip()
+        if offering in role_counts:
+            role_counts[offering] += 1
+
+    return {
+        "role_counts": role_counts,
+        "total_profiles": len(profiles_result.data or []),
+    }
 
 
 @router.get("/roles")

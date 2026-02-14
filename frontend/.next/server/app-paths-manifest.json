@@ -1,9 +1,7 @@
 {
-  "/signup/page": "app/signup/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/matching/page": "app/matching/page.js",
-  "/family-rooms/page": "app/family-rooms/page.js",
-  "/profile/page": "app/profile/page.js",
   "/page": "app/page.js",
-  "/login/page": "app/login/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/login/page": "app/login/page.js",
+  "/matching/page": "app/matching/page.js",
+  "/signup/page": "app/signup/page.js"
 }

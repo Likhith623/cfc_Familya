@@ -92,7 +92,7 @@ export default function SignUpPage() {
             <span className="text-2xl font-bold">Familia</span>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Join the Family 🌍</h1>
-          <p className="text-white/50">Create your account to start connecting</p>
+          <p className="text-muted">Create your account to start connecting</p>
         </div>
 
         {/* Progress */}
@@ -101,7 +101,7 @@ export default function SignUpPage() {
             <motion.div
               key={s}
               className={`h-1.5 flex-1 rounded-full transition-all ${
-                s <= step ? "bg-gradient-to-r from-familia-500 to-heart-500" : "bg-white/10"
+                s <= step ? "bg-gradient-to-r from-familia-500 to-heart-500" : "bg-[var(--bg-card-hover)]"
               }`}
               initial={s <= step ? { scaleX: 0 } : {}}
               animate={{ scaleX: 1 }}
@@ -116,22 +116,22 @@ export default function SignUpPage() {
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">📝 Basic Info</h2>
 
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Display Name</label>
+                <label className="text-sm text-muted mb-1 block">Display Name</label>
                 <input name="display_name" value={form.display_name} onChange={handleChange} placeholder="How should we call you?" className="input-familia" />
               </div>
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Username</label>
+                <label className="text-sm text-muted mb-1 block">Username</label>
                 <input name="username" value={form.username} onChange={handleChange} placeholder="Choose a unique username" className="input-familia" />
               </div>
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Email</label>
+                <label className="text-sm text-muted mb-1 block">Email</label>
                 <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="your@email.com" className="input-familia" />
               </div>
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Password</label>
+                <label className="text-sm text-muted mb-1 block">Password</label>
                 <div className="relative">
                   <input name="password" type={showPassword ? "text" : "password"} value={form.password} onChange={handleChange} placeholder="Create a strong password" className="input-familia pr-12" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-[var(--text-primary)]">
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
@@ -154,16 +154,16 @@ export default function SignUpPage() {
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">🌍 Where Are You From?</h2>
 
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Date of Birth</label>
+                <label className="text-sm text-muted mb-1 block">Date of Birth</label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <input name="date_of_birth" type="date" value={form.date_of_birth} onChange={handleChange} className="input-familia pl-10" />
                 </div>
               </div>
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Country</label>
+                <label className="text-sm text-muted mb-1 block">Country</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
                   <select name="country" value={form.country} onChange={handleChange} className="input-familia pl-10 appearance-none">
                     <option value="">Select your country</option>
                     {COUNTRIES.map((c) => (<option key={c} value={c}>{c}</option>))}
@@ -171,11 +171,11 @@ export default function SignUpPage() {
                 </div>
               </div>
               <div>
-                <label className="text-sm text-white/60 mb-1 block">City (optional)</label>
+                <label className="text-sm text-muted mb-1 block">City (optional)</label>
                 <input name="city" value={form.city} onChange={handleChange} placeholder="Your city" className="input-familia" />
               </div>
               <div>
-                <label className="text-sm text-white/60 mb-1 block">Gender (optional)</label>
+                <label className="text-sm text-muted mb-1 block">Gender (optional)</label>
                 <select name="gender" value={form.gender} onChange={handleChange} className="input-familia appearance-none">
                   <option value="">Prefer not to say</option>
                   <option value="male">Male</option>
@@ -218,7 +218,7 @@ export default function SignUpPage() {
           )}
         </div>
 
-        <p className="text-center text-white/40 text-sm mt-6">
+        <p className="text-center text-muted text-sm mt-6">
           Already have an account?{" "}
           <Link href="/login" className="text-familia-400 hover:text-familia-300 font-medium">Sign in</Link>
         </p>

@@ -62,6 +62,9 @@ interface AuthContextType {
   refreshRelationships: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
   markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
 }
 
 // Create context with default values to prevent undefined errors during SSR
@@ -79,6 +82,9 @@ const AuthContext = createContext<AuthContextType>({
   refreshRelationships: async () => {},
   refreshNotifications: async () => {},
   markNotificationRead: () => {},
+  markAllNotificationsRead: async () => {},
+  deleteNotification: async () => {},
+  clearAllNotifications: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -222,6 +228,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const markAllNotificationsRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    if (!user?.id) return;
+    try {
+      await api.markAllNotificationsRead(user.id);
+    } catch (e) {
+      console.error('Failed to mark all notifications as read:', e);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    if (!user?.id) return;
+    try {
+      await api.deleteNotification(user.id, id);
+    } catch (e) {
+      console.error('Failed to delete notification:', e);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    setNotifications([]);
+    if (!user?.id) return;
+    try {
+      await api.clearAllNotifications(user.id);
+    } catch (e) {
+      console.error('Failed to clear all notifications:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -238,6 +274,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshRelationships,
         refreshNotifications,
         markNotificationRead,
+        markAllNotificationsRead,
+        deleteNotification,
+        clearAllNotifications,
       }}
     >
       {children}

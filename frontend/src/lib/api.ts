@@ -37,14 +37,24 @@ export const api = {
   updateProfile: (userId: string, data: any) => request(`/profiles/${userId}`, { method: 'PUT', body: JSON.stringify(data) }),
   updateAvatar: (userId: string, config: any) => request(`/profiles/${userId}/avatar`, { method: 'PUT', body: JSON.stringify(config) }),
   addLanguage: (userId: string, data: any) => request(`/profiles/${userId}/languages`, { method: 'POST', body: JSON.stringify(data) }),
+  removeLanguage: (userId: string, langCode: string) => request(`/profiles/${userId}/languages/${langCode}`, { method: 'DELETE' }),
   getRelationships: (userId: string) => request(`/profiles/${userId}/relationships`),
   getNotifications: (userId: string) => request(`/profiles/${userId}/notifications`),
+  markNotificationRead: (userId: string, notifId: string) => request(`/profiles/${userId}/notifications/${notifId}/read`, { method: 'PUT' }),
+  markAllNotificationsRead: (userId: string) => request(`/profiles/${userId}/notifications/read-all`, { method: 'PUT' }),
+  deleteNotification: (userId: string, notifId: string) => request(`/profiles/${userId}/notifications/${notifId}`, { method: 'DELETE' }),
+  clearAllNotifications: (userId: string) => request(`/profiles/${userId}/notifications`, { method: 'DELETE' }),
+  setMyRole: (data: { offering_role: string; seeking_role?: string }) => request('/profiles/me/role', { method: 'POST', body: JSON.stringify(data) }),
+  updateMyStatus: (userId: string, status: string, message?: string) => request(`/profiles/${userId}/status?status=${status}${message ? `&status_message=${encodeURIComponent(message)}` : ''}`, { method: 'PUT' }),
   
   // Matching
   searchMatch: (data: any) => request('/matching/search', { method: 'POST', body: JSON.stringify(data) }),
   checkQueue: (userId: string) => request(`/matching/queue/${userId}`),
   cancelMatching: (userId: string) => request(`/matching/queue/${userId}`, { method: 'DELETE' }),
   getRoles: () => request('/matching/roles'),
+  browseByRole: (role: string) => request(`/matching/browse-public/${role}`),
+  browseByRoleAuth: (role: string) => request(`/matching/browse/${role}`),
+  browseAllRoles: () => request('/matching/browse-all'),
   
   // Chat
   sendMessage: (data: any) => request('/chat/send', { method: 'POST', body: JSON.stringify(data) }),

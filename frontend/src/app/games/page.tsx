@@ -141,10 +141,10 @@ export default function GamesPage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <div className="sticky top-0 glass border-b border-white/5 z-20">
+      <div className="sticky top-0 glass border-b border-themed z-20">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link href="/dashboard">
-            <motion.button className="p-2 rounded-lg hover:bg-white/5 transition" whileTap={{ scale: 0.95 }}>
+            <motion.button className="p-2 rounded-lg hover:bg-[var(--bg-card-hover)] transition" whileTap={{ scale: 0.95 }}>
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
           </Link>
@@ -161,7 +161,7 @@ export default function GamesPage() {
           {state === 'playing' && (
             <motion.button
               onClick={() => { setState('catalog'); setSelectedGame(null); setCurrentQ(0); setMyChoices([]); setPartnerChoices([]); setShowPartnerChoice(false); }}
-              className="ml-auto text-xs text-white/40 hover:text-white/60 transition flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-full hover:bg-white/10"
+              className="ml-auto text-xs text-muted hover:text-[var(--text-secondary)] transition flex items-center gap-1.5 bg-[var(--bg-card-hover)] px-3 py-1.5 rounded-full hover:bg-[var(--bg-card-hover)]" 
               whileTap={{ scale: 0.95 }}
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -180,7 +180,7 @@ export default function GamesPage() {
                 <motion.h2 className="text-2xl font-bold mb-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
                   Play & Bond Together <span className="inline-block animate-bounce">🎮</span>
                 </motion.h2>
-                <p className="text-white/40 text-sm">Games designed to deepen your cross-cultural connection</p>
+                <p className="text-muted text-sm">Games designed to deepen your cross-cultural connection</p>
               </div>
 
               {isLoading ? (
@@ -197,7 +197,7 @@ export default function GamesPage() {
                       transition={{ delay: i * 0.05 }}
                     >
                       <div
-                        className="rounded-2xl p-[1px] bg-gradient-to-br from-white/[0.08] to-white/[0.02] hover:from-purple-500/30 hover:to-pink-500/20 transition-all duration-300 cursor-pointer group"
+                        className="rounded-2xl p-[1px] bg-gradient-to-br from-[var(--border-color)] to-transparent hover:from-purple-500/30 hover:to-pink-500/20 transition-all duration-300 cursor-pointer group"
                         onClick={() => startGame(game.game_type || game.id)}
                       >
                         <div className="glass-card !rounded-[15px] relative overflow-hidden">
@@ -208,19 +208,19 @@ export default function GamesPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold group-hover:text-white transition-colors">{game.title}</span>
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/30 group-hover:bg-purple-500/10 group-hover:text-purple-300 transition-colors">
+                              <span className="font-semibold group-hover:text-familia-400 transition-colors">{game.title}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-card-hover)] text-muted group-hover:bg-purple-500/10 group-hover:text-purple-300 transition-colors">
                                 {game.category}
                               </span>
                             </div>
-                            <p className="text-xs text-white/40 mb-2">{game.description}</p>
-                            <div className="flex items-center gap-3 text-[10px] text-white/25">
+                            <p className="text-xs text-muted mb-2">{game.description}</p>
+                            <div className="flex items-center gap-3 text-[10px] text-subtle">
                               <span className="flex items-center gap-1"><Users className="w-3 h-3" /> 2 Players</span>
                               <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {game.estimated_minutes} min</span>
                               <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full font-medium"><Star className="w-3 h-3" /> +{game.bond_points_reward} pts</span>
                             </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
+                          <ChevronRight className="w-4 h-4 text-subtle group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
                         </div>
                         </div>
                       </div>
@@ -237,7 +237,7 @@ export default function GamesPage() {
               <div className="text-center mb-8">
                 <motion.div className="text-5xl mb-3" animate={{ rotate: [0, -10, 10, 0] }} transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}>🤔</motion.div>
                 <h2 className="text-2xl font-bold mb-1 gradient-text">Would You Rather</h2>
-                <p className="text-sm text-white/40">Question {currentQ + 1} of {WYR_QUESTIONS.length}</p>
+                <p className="text-sm text-muted">Question {currentQ + 1} of {WYR_QUESTIONS.length}</p>
               </div>
 
               {/* Progress */}
@@ -248,7 +248,7 @@ export default function GamesPage() {
                     className={`flex-1 h-2 rounded-full transition-all ${
                       i < currentQ ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
                       i === currentQ ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.5)]' :
-                      'bg-white/10'
+                      'bg-[var(--border-color)]'
                     }`}
                     initial={i === currentQ ? { scale: 0.8 } : {}}
                     animate={i === currentQ ? { scale: 1 } : {}}
@@ -270,7 +270,7 @@ export default function GamesPage() {
                     className={`w-full p-8 sm:p-10 rounded-2xl text-center transition-all duration-300 border-2 relative overflow-hidden ${
                       showPartnerChoice && myChoices[currentQ] === 'a'
                         ? 'border-purple-500/60 bg-purple-500/10 shadow-[0_0_30px_-5px_rgba(168,85,247,0.3)]'
-                        : 'border-white/5 bg-white/[0.02] hover:border-purple-500/40 hover:bg-purple-500/5 hover:shadow-[0_0_20px_-5px_rgba(168,85,247,0.2)]'
+                        : 'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-purple-500/40 hover:bg-purple-500/5 hover:shadow-[0_0_20px_-5px_rgba(168,85,247,0.2)]'
                     }`}
                     whileHover={!showPartnerChoice ? { scale: 1.03, y: -2 } : {}}
                     whileTap={!showPartnerChoice ? { scale: 0.97 } : {}}
@@ -288,13 +288,13 @@ export default function GamesPage() {
                         </motion.div>
                       )}
                       {showPartnerChoice && partnerChoices[currentQ] !== 'a' && myChoices[currentQ] === 'a' && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-white/30">Your choice</motion.div>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-muted">Your choice</motion.div>
                       )}
                     </div>
                   </motion.button>
 
                   <div className="text-center">
-                    <span className="text-white/20 font-bold text-sm bg-white/5 px-4 py-1.5 rounded-full">OR</span>
+                    <span className="text-subtle font-bold text-sm bg-[var(--bg-card-hover)] px-4 py-1.5 rounded-full">OR</span>
                   </div>
 
                   <motion.button
@@ -303,7 +303,7 @@ export default function GamesPage() {
                     className={`w-full p-8 sm:p-10 rounded-2xl text-center transition-all duration-300 border-2 relative overflow-hidden ${
                       showPartnerChoice && myChoices[currentQ] === 'b'
                         ? 'border-purple-500/60 bg-purple-500/10 shadow-[0_0_30px_-5px_rgba(168,85,247,0.3)]'
-                        : 'border-white/5 bg-white/[0.02] hover:border-purple-500/40 hover:bg-purple-500/5 hover:shadow-[0_0_20px_-5px_rgba(168,85,247,0.2)]'
+                        : 'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-purple-500/40 hover:bg-purple-500/5 hover:shadow-[0_0_20px_-5px_rgba(168,85,247,0.2)]'
                     }`}
                     whileHover={!showPartnerChoice ? { scale: 1.03, y: -2 } : {}}
                     whileTap={!showPartnerChoice ? { scale: 0.97 } : {}}
@@ -321,7 +321,7 @@ export default function GamesPage() {
                         </motion.div>
                       )}
                       {showPartnerChoice && partnerChoices[currentQ] !== 'b' && myChoices[currentQ] === 'b' && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-white/30">Your choice</motion.div>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-muted">Your choice</motion.div>
                       )}
                     </div>
                   </motion.button>
@@ -350,7 +350,7 @@ export default function GamesPage() {
               <motion.h2 className="text-3xl font-bold mb-2 gradient-text" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
                 {matchCount >= 4 ? 'You think alike!' : matchCount >= 3 ? 'Great connection!' : 'Interesting differences!'}
               </motion.h2>
-              <motion.p className="text-white/40 mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+              <motion.p className="text-muted mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
                 You and {partnerName} matched on {matchCount} out of {WYR_QUESTIONS.length} questions
                 {relationships.length === 0 && <span className="block text-xs text-amber-400/60 mt-1">(Demo mode - find a match to play together!)</span>}
               </motion.p>
@@ -360,26 +360,26 @@ export default function GamesPage() {
                 <div className="grid grid-cols-2 gap-4 text-center">
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 }}>
                     <div className="text-3xl font-bold text-purple-400">{matchCount}/{WYR_QUESTIONS.length}</div>
-                    <div className="text-xs text-white/30 mt-1">Matches</div>
+                    <div className="text-xs text-muted mt-1">Matches</div>
                   </motion.div>
                   <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.5 }}>
                     <div className="text-3xl font-bold text-amber-400">+8</div>
-                    <div className="text-xs text-white/30 mt-1">Bond Points</div>
+                    <div className="text-xs text-muted mt-1">Bond Points</div>
                   </motion.div>
                 </div>
 
                 {/* Comparison */}
-                <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                <div className="mt-4 pt-4 border-t border-[var(--border-color)] space-y-2">
                   {WYR_QUESTIONS.map((q, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
                       <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
-                        myChoices[i] === partnerChoices[i] ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/20'
+                        myChoices[i] === partnerChoices[i] ? 'bg-green-500/20 text-green-400' : 'bg-[var(--bg-card-hover)] text-subtle'
                       }`}>
                         {myChoices[i] === partnerChoices[i] ? '✓' : '✗'}
                       </span>
-                      <span className="text-white/40 truncate flex-1">Q{i + 1}</span>
+                      <span className="text-muted truncate flex-1">Q{i + 1}</span>
                       <span className="text-familia-400">{myChoices[i] === 'a' ? 'A' : 'B'}</span>
-                      <span className="text-white/20">vs</span>
+                      <span className="text-subtle">vs</span>
                       <span className="text-green-400">{partnerChoices[i] === 'a' ? 'A' : 'B'}</span>
                     </div>
                   ))}
@@ -395,7 +395,7 @@ export default function GamesPage() {
                   <Gamepad2 className="w-4 h-4" /> More Games
                 </button>
                 <Link href="/chat/rel-1">
-                  <motion.button className="px-5 py-3 rounded-xl border border-white/10 text-white/40 hover:text-white/60 hover:border-white/20 transition text-sm flex items-center gap-2" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <motion.button className="px-5 py-3 rounded-xl border border-[var(--border-color)] text-muted hover:text-[var(--text-secondary)] hover:border-[var(--border-hover)] transition text-sm flex items-center gap-2" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     💬 Back to Chat
                   </motion.button>
                 </Link>
