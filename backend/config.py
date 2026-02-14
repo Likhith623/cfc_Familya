@@ -76,7 +76,7 @@ Optional variables (features will be disabled without them):
    - CARTESIA_API_KEY: For text-to-speech
 
 """
-        print(error_msg, file=sys.stderr)
-        sys.exit(1)
+        print(error_msg, file=sys.stderr, flush=True)
+        raise RuntimeError(f"Missing required environment variables: {', '.join(missing_vars)}")
     
     return settings

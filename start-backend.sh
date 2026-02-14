@@ -23,15 +23,22 @@ fi
 # Test if we can import the app
 echo "Testing Python imports..."
 python -c "
+import sys
+import traceback
 try:
     from main import app
-    print('✓ Successfully imported FastAPI app')
+    print('✓ Successfully imported FastAPI app', flush=True)
 except Exception as e:
-    print(f'✗ Failed to import app: {e}')
-    import traceback
-    traceback.print_exc()
-    exit(1)
-" || exit 1
+    print(f'✗ Failed to import app: {e}', file=sys.stderr, flush=True)
+    print('\nFull traceback:', file=sys.stderr, flush=True)
+    traceback.print_exc(file=sys.stderr)
+    sys.exit(1)
+"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to import FastAPI app. Check error above." >&2
+    sleep 3600  # Keep container alive so we can see logs
+fi
 
 echo "Starting uvicorn on 0.0.0.0:8000..."
 exec python -m uvicorn main:app \
