@@ -64,6 +64,10 @@ WORKDIR /app/backend
 COPY backend/ .
 RUN rm -f .env
 
+# Copy backend startup script
+COPY start-backend.sh /app/start-backend.sh
+RUN chmod +x /app/start-backend.sh
+
 # ─── Frontend (standalone build) ────────────────────────────
 WORKDIR /app/frontend
 
