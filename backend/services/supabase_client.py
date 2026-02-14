@@ -3,28 +3,28 @@ from config import get_settings
 
 settings = get_settings()
 
-# Create TWO clients:
-# 1. Admin client with service role key - bypasses RLS for backend operations
-# 2. Auth client with anon key - for user authentication
-
-# Admin client (service role) - for database operations that need to bypass RLS
-supabase_admin: Client = create_client(
-    settings.SUPABASE_URL,
-    settings.SUPABASE_SERVICE_KEY
-)
-
-# Auth client (anon key) - for user authentication
-supabase_auth: Client = create_client(
-    settings.SUPABASE_URL,
-    settings.SUPABASE_ANON_KEY
-)
+# Lazy-initialized clients (created on first use, not at import time)
+_supabase_admin: Client = None
+_supabase_auth: Client = None
 
 
 def get_supabase() -> Client:
     """Get the admin Supabase client (bypasses RLS)."""
-    return supabase_admin
+    global _supabase_admin
+    if _supabase_admin is None:
+        _supabase_admin = create_client(
+            settings.SUPABASE_URL,
+            settings.SUPABASE_SERVICE_KEY
+        )
+    return _supabase_admin
 
 
 def get_auth_client() -> Client:
     """Get the auth Supabase client (for user authentication)."""
-    return supabase_auth
+    global _supabase_auth
+    if _supabase_auth is None:
+        _supabase_auth = create_client(
+            settings.SUPABASE_URL,
+            settings.SUPABASE_ANON_KEY
+        )
+    return _supabase_auth

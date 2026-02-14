@@ -1,24 +1,22 @@
 #!/bin/bash
-set -e
 
 cd /app/backend
 
-echo "=== Backend starting at $(date) ==="
-echo "Python: $(python --version)"
+echo "=== Backend starting ==="
+echo "Python: $(python --version 2>&1)"
+echo "Working dir: $(pwd)"
 
-# Test imports first to catch errors
-echo "Testing imports..."
-python -c "import sys; sys.path.insert(0, '.'); from main import app; print('✓ Main app imports OK')" 2>&1 || {
-    echo "ERROR: Failed to import main app"
-    python -c "import sys; sys.path.insert(0, '.'); from main import app" 2>&1
-    exit 1
-}
-
-echo "Starting uvicorn on 0.0.0.0:8000..."
+# Don't set -e so we can capture errors
 export PYTHONUNBUFFERED=1
-exec python -m uvicorn main:app \
+
+echo "Starting uvicorn..."
+python -m uvicorn main:app \
     --host 0.0.0.0 \
     --port 8000 \
     --workers 1 \
     --log-level info \
     --timeout-keep-alive 75 2>&1
+
+# If we get here, uvicorn exited
+echo "ERROR: Uvicorn exited with code $?"
+exit 1
