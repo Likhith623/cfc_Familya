@@ -3,59 +3,54 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
-import { Globe, Eye, EyeOff, ArrowRight, Shield, Heart, Sparkles } from "lucide-react";
+import { Globe, Eye, EyeOff, ArrowRight, Shield, Heart, Sparkles, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import toast from "react-hot-toast";
 
 const FLOATING_FLAGS = ["🇮🇳", "🇧🇷", "🇯🇵", "🇰🇪", "🇩🇪", "🇲🇽"];
 
 export default function LoginPage() {
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
+    
     try {
-      localStorage.setItem("familia_token", "demo-token-" + Date.now());
-      localStorage.setItem(
-        "familia_user",
-        JSON.stringify({
-          id: "demo-user-1",
-          display_name: "Demo User",
-          email: form.email,
-          country: "India",
-          is_verified: true,
-          care_score: 45,
-          reliability_score: 95,
-          total_bond_points: 213,
-        })
-      );
+      await login(form.email, form.password);
+      toast.success("Welcome back to Familia!");
       window.location.href = "/dashboard";
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || "Login failed. Please check your credentials.");
+      toast.error(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDemo = () => {
-    localStorage.setItem("familia_token", "demo-token-" + Date.now());
-    localStorage.setItem(
-      "familia_user",
-      JSON.stringify({
-        id: "demo-user-1",
-        display_name: "Raj Patel",
-        email: "raj@example.com",
-        country: "India",
-        city: "Mumbai",
-        is_verified: true,
-        care_score: 45,
-        reliability_score: 95,
-        total_bond_points: 213,
-        languages: ["English", "Hindi", "Gujarati"],
-      })
-    );
-    window.location.href = "/dashboard";
+  const handleDemo = async () => {
+    // Use a test account for demo - this requires the backend to be running
+    // and the test user to exist in the database
+    setLoading(true);
+    setError("");
+    
+    try {
+      // Try to login with a demo account
+      await login("demo@familia.app", "demo123456");
+      toast.success("Demo mode activated!");
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      // If demo account doesn't exist, show a friendly message
+      setError("Demo account not available. Please sign up for a new account.");
+      toast.error("Demo account not found. Please create an account.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -155,13 +150,24 @@ export default function LoginPage() {
             disabled={loading}
           >
             {loading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
                 Sign In <ArrowRight className="w-4 h-4" />
               </>
             )}
           </motion.button>
+
+          {/* Error message */}
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-red-400 text-sm text-center"
+            >
+              {error}
+            </motion.p>
+          )}
 
           {/* Divider */}
           <div className="relative">

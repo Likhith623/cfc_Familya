@@ -6,37 +6,89 @@ import { useState, useEffect } from "react";
 import {
   ArrowLeft, Globe, Heart, Shield, Star, Flame, Trophy, Medal,
   Languages, MapPin, Calendar, Settings, LogOut, Edit, ChevronRight,
-  Sparkles, Users, Award, Zap
+  Sparkles, Users, Award, Zap, Loader2
 } from "lucide-react";
 import { LEVEL_NAMES } from "@/types";
+import { useAuth } from "@/lib/AuthContext";
+import { api } from "@/lib/api";
+import toast from "react-hot-toast";
 
-const ACHIEVEMENTS = [
-  { id: "first-bond", emoji: "🤝", name: "First Bond", desc: "Made your first connection", earned: true },
-  { id: "polyglot", emoji: "🌐", name: "Polyglot", desc: "Chat in 3+ languages", earned: true },
-  { id: "loyal-friend", emoji: "💎", name: "Loyal Friend", desc: "30-day streak with a bond", earned: true },
-  { id: "culture-chef", emoji: "🍳", name: "Culture Chef", desc: "Share 5 recipes", earned: false },
-  { id: "storyteller", emoji: "📖", name: "Storyteller", desc: "Share 10 cultural stories", earned: false },
-  { id: "quiz-master", emoji: "🧠", name: "Quiz Master", desc: "Win 10 bond contests", earned: true },
-  { id: "global-heart", emoji: "❤️", name: "Global Heart", desc: "Care score above 75", earned: true },
-  { id: "world-family", emoji: "🌍", name: "World Family", desc: "Bonds in 5+ countries", earned: false },
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon_emoji: string;
+  earned_at?: string;
+}
+
+const DEFAULT_ACHIEVEMENTS = [
+  { id: "first-bond", icon_emoji: "🤝", name: "First Bond", description: "Made your first connection", earned: false },
+  { id: "polyglot", icon_emoji: "🌐", name: "Polyglot", description: "Chat in 3+ languages", earned: false },
+  { id: "loyal-friend", icon_emoji: "💎", name: "Loyal Friend", description: "30-day streak with a bond", earned: false },
+  { id: "culture-chef", icon_emoji: "🍳", name: "Culture Chef", description: "Share 5 recipes", earned: false },
+  { id: "storyteller", icon_emoji: "📖", name: "Storyteller", description: "Share 10 cultural stories", earned: false },
+  { id: "quiz-master", icon_emoji: "🧠", name: "Quiz Master", description: "Win 10 bond contests", earned: false },
+  { id: "global-heart", icon_emoji: "❤️", name: "Global Heart", description: "Care score above 75", earned: false },
+  { id: "world-family", icon_emoji: "🌍", name: "World Family", description: "Bonds in 5+ countries", earned: false },
 ];
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null);
+  const { user, relationships, logout, refreshUser } = useAuth();
+  const [achievements, setAchievements] = useState<any[]>(DEFAULT_ACHIEVEMENTS);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("familia_user");
-    if (stored) setUser(JSON.parse(stored));
-    else setUser({
-      id: "demo", display_name: "Raj Patel", email: "raj@example.com",
-      country: "India", city: "Mumbai", age: 22,
-      languages: ["English", "Hindi", "Gujarati"],
-      care_score: 45, reliability_score: 95, is_verified: true,
-      total_bond_points: 213, joined: "2024-01-15",
-    });
-  }, []);
+    const loadProfile = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        await refreshUser();
+        // TODO: Load achievements from API when available
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadProfile();
+  }, [user?.id]);
 
-  if (!user) return null;
+  const handleLogout = () => {
+    logout();
+    toast.success("Signed out successfully");
+    window.location.href = "/";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-familia-400" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center glass-card max-w-md">
+          <h2 className="text-xl font-bold mb-2">Not logged in</h2>
+          <p className="text-white/50 mb-4">Please log in to view your profile</p>
+          <Link href="/login" className="btn-primary inline-flex items-center gap-2">
+            Sign In <ArrowLeft className="w-4 h-4 rotate-180" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate joined date
+  const joinedDate = user.created_at 
+    ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : 'Recently';
 
   return (
     <div className="min-h-screen pb-24">
@@ -100,11 +152,11 @@ export default function ProfilePage() {
                 {user.is_verified && <span className="badge-verified text-xs">✅ Verified</span>}
               </div>
               <div className="flex items-center gap-3 text-sm text-white/40 mb-2">
-                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {user.city}, {user.country}</span>
-                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Joined Jan 2024</span>
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {user.city || user.country}, {user.country}</span>
+                <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Joined {joinedDate}</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {(user.languages || ["English", "Hindi"]).map((lang: string) => (
+                {(user.languages && user.languages.length > 0 ? user.languages : ["Not set"]).map((lang: string) => (
                   <span key={lang} className="text-[10px] px-2 py-1 rounded-full bg-familia-500/10 text-familia-300 border border-familia-500/20">
                     🌐 {lang}
                   </span>
@@ -117,10 +169,10 @@ export default function ProfilePage() {
         {/* ── Stats Grid ── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Care Score", value: user.care_score || 45, icon: <Heart className="w-4 h-4" />, color: "text-heart-400", bg: "bg-heart-500/10", border: "border-heart-500/10" },
-            { label: "Bond Points", value: user.total_bond_points || 213, icon: <Zap className="w-4 h-4" />, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/10" },
-            { label: "Reliability", value: `${user.reliability_score || 95}%`, icon: <Shield className="w-4 h-4" />, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/10" },
-            { label: "Best Streak", value: "12 days", icon: <Flame className="w-4 h-4" />, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/10" },
+            { label: "Care Score", value: user.care_score ?? 0, icon: <Heart className="w-4 h-4" />, color: "text-heart-400", bg: "bg-heart-500/10", border: "border-heart-500/10" },
+            { label: "Bond Points", value: user.total_bond_points ?? 0, icon: <Zap className="w-4 h-4" />, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/10" },
+            { label: "Reliability", value: `${user.reliability_score ?? 100}%`, icon: <Shield className="w-4 h-4" />, color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/10" },
+            { label: "Best Streak", value: `${relationships.reduce((max, r) => Math.max(max, r.streak_days || 0), 0)} days`, icon: <Flame className="w-4 h-4" />, color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/10" },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -150,31 +202,36 @@ export default function ProfilePage() {
             </Link>
           </div>
           <div className="space-y-2">
-            {[
-              { name: "Maria Santos", country: "🇧🇷 Brazil", role: "mother", emoji: "👩", level: 3, streak: 12 },
-              { name: "Kenji Tanaka", country: "🇯🇵 Japan", role: "mentor", emoji: "🧑‍🏫", level: 2, streak: 5 },
-            ].map((bond, i) => (
-              <Link key={i} href={`/chat/rel-${i + 1}`}>
-                <motion.div
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition cursor-pointer group"
-                  whileHover={{ x: 2 }}
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-familia-500 to-bond-500 flex items-center justify-center text-lg group-hover:shadow-glow-sm transition-shadow">
-                    {bond.emoji}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{bond.name}</div>
-                    <div className="text-xs text-white/30">{bond.country} • Your {bond.role}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="badge-level text-[10px]">Lv.{bond.level} {LEVEL_NAMES[bond.level]}</div>
-                    <div className="text-[10px] text-orange-400 flex items-center gap-1 justify-end mt-0.5">
-                      <Flame className="w-3 h-3" /> {bond.streak}d
+            {relationships.length === 0 ? (
+              <div className="text-center py-8 text-white/40">
+                <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No bonds yet</p>
+                <Link href="/matching" className="text-xs text-familia-400 hover:underline">Start connecting →</Link>
+              </div>
+            ) : (
+              relationships.slice(0, 3).map((bond, i) => (
+                <Link key={bond.id} href={`/chat/${bond.id}`}>
+                  <motion.div
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition cursor-pointer group"
+                    whileHover={{ x: 2 }}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-familia-500 to-bond-500 flex items-center justify-center text-lg group-hover:shadow-glow-sm transition-shadow">
+                      {bond.partner?.display_name?.[0] || '👤'}
                     </div>
-                  </div>
-                </motion.div>
-              </Link>
-            ))}
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{bond.partner?.display_name || 'Unknown'}</div>
+                      <div className="text-xs text-white/30">{bond.partner?.country || 'Unknown'} • Your {bond.my_role}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="badge-level text-[10px]">Lv.{bond.level} {LEVEL_NAMES[bond.level] || 'Stranger'}</div>
+                      <div className="text-[10px] text-orange-400 flex items-center gap-1 justify-end mt-0.5">
+                        <Flame className="w-3 h-3" /> {bond.streak_days || 0}d
+                      </div>
+                    </div>
+                  </motion.div>
+                </Link>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -182,27 +239,30 @@ export default function ProfilePage() {
         <motion.div className="glass-card mb-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <h3 className="font-bold flex items-center gap-2 mb-4">
             <Trophy className="w-4 h-4 text-amber-400" /> Achievements
-            <span className="text-xs text-white/30 ml-auto">{ACHIEVEMENTS.filter(a => a.earned).length}/{ACHIEVEMENTS.length}</span>
+            <span className="text-xs text-white/30 ml-auto">{achievements.filter(a => a.earned_at || a.earned).length}/{achievements.length}</span>
           </h3>
           <div className="grid grid-cols-4 gap-3">
-            {ACHIEVEMENTS.map((ach, i) => (
-              <motion.div
-                key={ach.id}
-                className={`text-center p-2 rounded-xl transition-all ${
-                  ach.earned
-                    ? "bg-amber-500/5 border border-amber-500/10 hover:bg-amber-500/10"
-                    : "bg-white/[0.02] border border-white/5 opacity-40 grayscale"
-                }`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: ach.earned ? 1 : 0.4, scale: 1 }}
-                transition={{ delay: 0.3 + i * 0.05 }}
-                whileHover={ach.earned ? { scale: 1.05, y: -2 } : {}}
-              >
-                <div className="text-2xl mb-1">{ach.emoji}</div>
-                <div className="text-[10px] font-medium">{ach.name}</div>
-                <div className="text-[8px] text-white/30">{ach.desc}</div>
-              </motion.div>
-            ))}
+            {achievements.map((ach, i) => {
+              const earned = ach.earned_at || ach.earned;
+              return (
+                <motion.div
+                  key={ach.id}
+                  className={`text-center p-2 rounded-xl transition-all ${
+                    earned
+                      ? "bg-amber-500/5 border border-amber-500/10 hover:bg-amber-500/10"
+                      : "bg-white/[0.02] border border-white/5 opacity-40 grayscale"
+                  }`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: earned ? 1 : 0.4, scale: 1 }}
+                  transition={{ delay: 0.3 + i * 0.05 }}
+                  whileHover={earned ? { scale: 1.05, y: -2 } : {}}
+                >
+                  <div className="text-2xl mb-1">{ach.icon_emoji}</div>
+                  <div className="text-[10px] font-medium">{ach.name}</div>
+                  <div className="text-[8px] text-white/30">{ach.description}</div>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.div>
 
@@ -224,12 +284,13 @@ export default function ProfilePage() {
                 <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/40 group-hover:translate-x-0.5 transition-all" />
               </button>
             ))}
-            <Link href="/">
-              <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-500/5 transition text-left text-red-400/60 hover:text-red-400">
-                <LogOut className="w-4 h-4" />
-                <span className="text-sm">Sign Out</span>
-              </button>
-            </Link>
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-red-500/5 transition text-left text-red-400/60 hover:text-red-400"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-sm">Sign Out</span>
+            </button>
           </div>
         </motion.div>
       </div>

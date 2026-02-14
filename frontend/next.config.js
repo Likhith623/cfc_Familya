@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
+
 const nextConfig = {
+  // Fix workspace root detection warning
+  outputFileTracingRoot: path.join(__dirname),
   images: {
     domains: ['*.supabase.co', 'api.dicebear.com', 'avatars.githubusercontent.com'],
   },

@@ -37,9 +37,11 @@ async def get_contest_details(contest_id: str):
     """Get contest details with questions."""
     db = get_supabase()
     
-    contest = db.table("contests").select("*").eq("id", contest_id).single().execute()
-    if not contest.data:
+    contest = db.table("contests").select("*").eq("id", contest_id).execute()
+    if not contest.data or len(contest.data) == 0:
         raise HTTPException(status_code=404, detail="Contest not found")
+    
+    contest_data = contest.data[0]
     
     questions = db.table("contest_questions") \
         .select("id, question_text, question_type, options, points, question_order, question_about_user") \
@@ -48,7 +50,7 @@ async def get_contest_details(contest_id: str):
         .execute()
     
     return {
-        "contest": contest.data,
+        "contest": contest_data,
         "questions": questions.data or []
     }
 

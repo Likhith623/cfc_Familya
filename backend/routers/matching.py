@@ -1,23 +1,25 @@
 """Matching router - Find and create bonds."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from models.schemas import MatchRequest
 from services.supabase_client import get_supabase
 from services.matching_service import find_match, create_relationship
+from services.auth_service import get_current_user_id
 
 router = APIRouter(prefix="/matching", tags=["Matching"])
 
 
 @router.post("/search")
-async def search_for_match(req: MatchRequest, user_id: str = ""):
+async def search_for_match(req: MatchRequest, user_id: str = Depends(get_current_user_id)):
     """Enter the matching queue and search for a partner."""
     db = get_supabase()
     
     # Check if user is verified
-    profile = db.table("profiles").select("is_verified, is_banned").eq("id", user_id).single().execute()
-    if not profile.data:
+    profile = db.table("profiles").select("is_verified, is_banned").eq("id", user_id).execute()
+    if not profile.data or len(profile.data) == 0:
         raise HTTPException(status_code=404, detail="Profile not found")
-    if profile.data.get("is_banned"):
+    profile_data = profile.data[0]
+    if profile_data.get("is_banned"):
         raise HTTPException(status_code=403, detail="Account is banned")
     
     # Cancel any existing queue entries
@@ -72,13 +74,12 @@ async def search_for_match(req: MatchRequest, user_id: str = ""):
         partner_profile = db.table("profiles") \
             .select("id, display_name, country, city, avatar_config, is_verified, care_score, bio") \
             .eq("id", candidate_id) \
-            .single() \
             .execute()
         
         return {
             "status": "matched",
             "relationship": relationship,
-            "partner": partner_profile.data,
+            "partner": partner_profile.data[0] if partner_profile.data else None,
             "match_score": candidate["score"]
         }
     
@@ -103,7 +104,7 @@ async def search_for_match(req: MatchRequest, user_id: str = ""):
 
 
 @router.get("/queue/{user_id}")
-async def check_queue_status(user_id: str):
+async def check_queue_status(user_id: str, current_user: str = Depends(get_current_user_id)):
     """Check current matching queue status."""
     db = get_supabase()
     
@@ -127,7 +128,7 @@ async def check_queue_status(user_id: str):
 
 
 @router.delete("/queue/{user_id}")
-async def cancel_matching(user_id: str):
+async def cancel_matching(user_id: str, current_user: str = Depends(get_current_user_id)):
     """Cancel matching search."""
     db = get_supabase()
     

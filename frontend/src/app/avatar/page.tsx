@@ -2,11 +2,14 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ArrowLeft, Save, Shuffle, Palette, Shirt, Eye, Smile,
-  Sparkles, ChevronLeft, ChevronRight, RotateCcw, Check, Wand2
+  Sparkles, ChevronLeft, ChevronRight, RotateCcw, Check, Wand2, Loader2
 } from "lucide-react";
+import { api } from "@/lib/api";
+import { useAuth } from "@/lib/AuthContext";
+import toast from "react-hot-toast";
 
 /* ═══════════════════════════════════════════════════
    CUSTOMIZATION DATA
@@ -439,8 +442,11 @@ function adjustBrightness(hex: string, amount: number): string {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════ */
 export default function AvatarPage() {
+  const { user, refreshUser } = useAuth();
   const [tab, setTab] = useState<Tab>("skin");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState({
     skinTone: SKIN_TONES[2].hex,
     hairColor: HAIR_COLORS[0].hex,
@@ -451,6 +457,30 @@ export default function AvatarPage() {
     expression: EXPRESSIONS[0].id,
     background: BACKGROUNDS[5].id,
   });
+
+  // Load existing avatar config from user profile
+  useEffect(() => {
+    const loadAvatar = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const profileData = await api.getProfile(user.id);
+        if (profileData.profile?.avatar_config) {
+          setConfig({
+            ...config,
+            ...profileData.profile.avatar_config
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load avatar:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadAvatar();
+  }, [user]);
 
   const updateConfig = useCallback((key: string, value: string) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
@@ -469,10 +499,26 @@ export default function AvatarPage() {
     });
   }, []);
 
-  const handleSave = () => {
-    localStorage.setItem("familia_avatar", JSON.stringify(config));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Please log in to save your avatar");
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      await api.updateAvatar(user.id, config);
+      localStorage.setItem("familia_avatar", JSON.stringify(config));
+      setSaved(true);
+      toast.success("Avatar saved successfully!");
+      await refreshUser();
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      console.error('Failed to save avatar:', err);
+      toast.error(err.message || "Failed to save avatar");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const bgConfig = BACKGROUNDS.find((b) => b.id === config.background) || BACKGROUNDS[5];
@@ -508,20 +554,22 @@ export default function AvatarPage() {
           <div className="flex items-center gap-2">
             <motion.button
               onClick={randomize}
-              className="p-2.5 rounded-xl hover:bg-white/5 transition text-white/50 hover:text-white"
+              className="p-2.5 rounded-xl hover:bg-[var(--bg-card-hover)] transition text-muted hover:text-[var(--text-primary)]"
               whileTap={{ scale: 0.9, rotate: 180 }}
               title="Randomize"
+              disabled={saving}
             >
               <Shuffle className="w-5 h-5" />
             </motion.button>
             <motion.button
               onClick={handleSave}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-familia-500 to-heart-500 text-white text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-familia-500/20"
+              disabled={saving || !user}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-familia-500 to-heart-500 text-white text-sm font-semibold flex items-center gap-1.5 shadow-lg shadow-familia-500/20 disabled:opacity-50"
               whileTap={{ scale: 0.95 }}
               whileHover={{ shadow: "0 8px 30px rgba(255,107,53,0.3)" }}
             >
-              {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {saved ? "Saved!" : "Save"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+              {saving ? "Saving..." : saved ? "Saved!" : "Save"}
             </motion.button>
           </div>
         </div>

@@ -47,15 +47,16 @@ async def send_message(req: SendMessageRequest, user_id: str = ""):
         .select("*") \
         .eq("id", req.relationship_id) \
         .eq("status", "active") \
-        .single() \
         .execute()
     
-    if not rel.data:
+    if not rel.data or len(rel.data) == 0:
         raise HTTPException(status_code=404, detail="Relationship not found or inactive")
     
+    rel_data = rel.data[0]
+    
     # Determine partner
-    is_user_a = user_id == rel.data["user_a_id"]
-    partner_id = rel.data["user_b_id"] if is_user_a else rel.data["user_a_id"]
+    is_user_a = user_id == rel_data["user_a_id"]
+    partner_id = rel_data["user_b_id"] if is_user_a else rel_data["user_a_id"]
     
     # Detect language if not provided
     source_lang = req.original_language
@@ -112,8 +113,8 @@ async def send_message(req: SendMessageRequest, user_id: str = ""):
         }).execute()
     
     # Send notification to partner
-    sender_profile = db.table("profiles").select("display_name").eq("id", user_id).single().execute()
-    sender_name = sender_profile.data["display_name"] if sender_profile.data else "Someone"
+    sender_profile = db.table("profiles").select("display_name").eq("id", user_id).execute()
+    sender_name = sender_profile.data[0]["display_name"] if sender_profile.data else "Someone"
     
     db.table("notifications").insert({
         "user_id": partner_id,
@@ -162,17 +163,20 @@ async def get_relationship_details(relationship_id: str, user_id: str = ""):
     """Get full relationship details including partner info."""
     db = get_supabase()
     
-    rel = db.table("relationships").select("*").eq("id", relationship_id).single().execute()
-    if not rel.data:
+    rel = db.table("relationships").select("*").eq("id", relationship_id).execute()
+    if not rel.data or len(rel.data) == 0:
         raise HTTPException(status_code=404, detail="Relationship not found")
     
+    rel_data = rel.data[0]
+    
     # Get partner profile
-    partner_id = rel.data["user_b_id"] if rel.data["user_a_id"] == user_id else rel.data["user_a_id"]
+    partner_id = rel_data["user_b_id"] if rel_data["user_a_id"] == user_id else rel_data["user_a_id"]
     partner = db.table("profiles") \
         .select("id, display_name, country, city, timezone, avatar_config, is_verified, care_score, status, status_message, last_active_at") \
         .eq("id", partner_id) \
-        .single() \
         .execute()
+    
+    partner_data = partner.data[0] if partner.data else None
     
     # Get milestones
     milestones = db.table("relationship_milestones") \
@@ -182,15 +186,15 @@ async def get_relationship_details(relationship_id: str, user_id: str = ""):
         .execute()
     
     # Get partner's timezone for coordination
-    partner_tz = partner.data.get("timezone", "UTC") if partner.data else "UTC"
+    partner_tz = partner_data.get("timezone", "UTC") if partner_data else "UTC"
     
     # Determine my role and partner's role
-    my_role = rel.data["user_a_role"] if rel.data["user_a_id"] == user_id else rel.data["user_b_role"]
-    partner_role = rel.data["user_b_role"] if rel.data["user_a_id"] == user_id else rel.data["user_a_role"]
+    my_role = rel_data["user_a_role"] if rel_data["user_a_id"] == user_id else rel_data["user_b_role"]
+    partner_role = rel_data["user_b_role"] if rel_data["user_a_id"] == user_id else rel_data["user_a_role"]
     
     return {
-        "relationship": rel.data,
-        "partner": partner.data,
+        "relationship": rel_data,
+        "partner": partner_data,
         "partner_timezone": partner_tz,
         "milestones": milestones.data or [],
         "my_role": my_role,

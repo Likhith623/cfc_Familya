@@ -119,7 +119,6 @@ class InviteToRoomRequest(BaseModel):
 
 
 class RoomMessageRequest(BaseModel):
-    room_id: str
     content_type: str = "text"
     original_text: str
     original_language: Optional[str] = None

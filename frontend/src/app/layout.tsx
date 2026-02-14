@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from 'react-hot-toast';
+import { ThemeProvider } from '@/lib/ThemeContext';
+import { AuthProvider } from '@/lib/AuthContext';
+import BottomNav from '@/components/BottomNav';
 
 export const metadata: Metadata = {
   title: 'Familia — Real People. Real Bonds. No Borders.',
@@ -26,53 +29,62 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased min-h-screen">
-        {/* ── Layered animated background ── */}
-        <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
-          {/* Base mesh gradient */}
-          <div className="bg-mesh absolute inset-0 opacity-40" />
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="antialiased min-h-screen bg-primary text-primary transition-colors duration-300">
+        <ThemeProvider>
+          <AuthProvider>
+            {/* ── Layered animated background ── */}
+            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-animated" aria-hidden="true">
+              {/* Base mesh gradient */}
+              <div className="bg-mesh absolute inset-0 opacity-40" />
 
-          {/* Subtle dot pattern overlay */}
-          <div className="bg-dot-pattern absolute inset-0 opacity-[0.03]" />
+              {/* Subtle dot pattern overlay */}
+              <div className="bg-dot-pattern absolute inset-0 opacity-[0.03]" />
 
-          {/* Animated orbs */}
-          <div className="orb orb-primary" />
-          <div className="orb orb-secondary" />
-          <div className="orb orb-accent" />
+              {/* Animated orbs - only show in dark mode */}
+              <div className="dark-only">
+                <div className="orb orb-primary" />
+                <div className="orb orb-secondary" />
+                <div className="orb orb-accent" />
 
-          {/* Meteors */}
-          <div className="meteor" style={{ top: '15%', left: '85%', animationDelay: '0s' }} />
-          <div className="meteor" style={{ top: '45%', left: '70%', animationDelay: '3s' }} />
-          <div className="meteor" style={{ top: '70%', left: '90%', animationDelay: '7s' }} />
-        </div>
+                {/* Meteors */}
+                <div className="meteor" style={{ top: '15%', left: '85%', animationDelay: '0s' }} />
+                <div className="meteor" style={{ top: '45%', left: '70%', animationDelay: '3s' }} />
+                <div className="meteor" style={{ top: '70%', left: '90%', animationDelay: '7s' }} />
+              </div>
+            </div>
 
-        <main className="relative z-10">
-          {children}
-        </main>
+            <main className="relative z-10 pb-20">
+              {children}
+            </main>
 
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: 'rgba(26, 26, 46, 0.95)',
-              backdropFilter: 'blur(16px)',
-              color: '#F8FAFC',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '0.875rem',
-              fontSize: '0.875rem',
-              padding: '0.75rem 1rem',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-            },
-            success: {
-              iconTheme: { primary: '#4ADE80', secondary: '#1A1A2E' },
-            },
-            error: {
-              iconTheme: { primary: '#F43F5E', secondary: '#1A1A2E' },
-            },
-          }}
-        />
+            <BottomNav />
+
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                duration: 4000,
+                className: 'toast-custom',
+                style: {
+                  background: 'var(--toast-bg)',
+                  backdropFilter: 'blur(16px)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '0.875rem',
+                  fontSize: '0.875rem',
+                  padding: '0.75rem 1rem',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+                },
+                success: {
+                  iconTheme: { primary: '#4ADE80', secondary: 'var(--bg-primary)' },
+                },
+                error: {
+                  iconTheme: { primary: '#F43F5E', secondary: 'var(--bg-primary)' },
+                },
+              }}
+            />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -52,15 +52,17 @@ async def sever_bond(req: SeverBondRequest, user_id: str = ""):
     """One-tap sever a relationship bond."""
     db = get_supabase()
     
-    rel = db.table("relationships").select("*").eq("id", req.relationship_id).single().execute()
-    if not rel.data:
+    rel = db.table("relationships").select("*").eq("id", req.relationship_id).execute()
+    if not rel.data or len(rel.data) == 0:
         raise HTTPException(status_code=404, detail="Relationship not found")
     
+    rel_data = rel.data[0]
+    
     # Determine partner
-    partner_id = rel.data["user_b_id"] if rel.data["user_a_id"] == user_id else rel.data["user_a_id"]
+    partner_id = rel_data["user_b_id"] if rel_data["user_a_id"] == user_id else rel_data["user_a_id"]
     
     # End the relationship
-    farewell_field = "farewell_message_a" if rel.data["user_a_id"] == user_id else "farewell_message_b"
+    farewell_field = "farewell_message_a" if rel_data["user_a_id"] == user_id else "farewell_message_b"
     
     db.table("relationships").update({
         "status": "ended",
@@ -118,18 +120,19 @@ async def get_reliability_info(user_id: str):
     profile = db.table("profiles") \
         .select("reliability_score, status, status_message, last_active_at, status_return_date") \
         .eq("id", user_id) \
-        .single() \
         .execute()
     
-    if not profile.data:
+    if not profile.data or len(profile.data) == 0:
         raise HTTPException(status_code=404, detail="Profile not found")
     
+    profile_data = profile.data[0]
+    
     return {
-        "reliability_score": profile.data["reliability_score"],
-        "current_status": profile.data["status"],
-        "status_message": profile.data["status_message"],
-        "last_active": profile.data["last_active_at"],
-        "return_date": profile.data["status_return_date"],
+        "reliability_score": profile_data["reliability_score"],
+        "current_status": profile_data["status"],
+        "status_message": profile_data["status_message"],
+        "last_active": profile_data["last_active_at"],
+        "return_date": profile_data["status_return_date"],
         "ghosting_protection": {
             "grace_period_days": 7,
             "available_statuses": [
@@ -151,19 +154,20 @@ async def get_minor_protection_settings(user_id: str):
     profile = db.table("profiles") \
         .select("is_minor, parent_email, parent_approved, date_of_birth") \
         .eq("id", user_id) \
-        .single() \
         .execute()
     
-    if not profile.data:
+    if not profile.data or len(profile.data) == 0:
         raise HTTPException(status_code=404, detail="Profile not found")
     
-    if not profile.data["is_minor"]:
+    profile_data = profile.data[0]
+    
+    if not profile_data["is_minor"]:
         return {"is_minor": False, "protections": None}
     
     return {
         "is_minor": True,
-        "parent_approved": profile.data["parent_approved"],
-        "parent_email": profile.data["parent_email"],
+        "parent_approved": profile_data["parent_approved"],
+        "parent_email": profile_data["parent_email"],
         "protections": {
             "cannot_match": ["Adults in parent roles without verified mentor badge"],
             "cannot_access": ["Voice calls until Level 3", "Photo sharing until Level 2"],

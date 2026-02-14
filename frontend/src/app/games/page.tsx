@@ -2,52 +2,45 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft, Gamepad2, Trophy, Star, Heart, Users, Clock,
-  Sparkles, Play, Zap, ChevronRight, RotateCcw
+  Sparkles, Play, Zap, ChevronRight, RotateCcw, Loader2
 } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useAuth } from '@/lib/AuthContext';
+import toast from 'react-hot-toast';
 
-const GAMES = [
+interface Game {
+  id: string;
+  game_type: string;
+  title: string;
+  description: string;
+  instructions: string;
+  category: string;
+  difficulty: string;
+  icon_emoji: string;
+  bond_points_reward: number;
+  estimated_minutes: number;
+  is_active?: boolean;
+}
+
+// Fallback games in case API fails
+const FALLBACK_GAMES: Game[] = [
   {
-    id: 'mood-mirror', emoji: '🪞', name: 'Mood Mirror', category: 'Empathy',
-    desc: "Guess your partner's current mood from clues", bond_points: 5,
-    color: 'from-pink-500 to-rose-500', players: '2 Players', time: '3-5 min',
+    id: 'mood-mirror', game_type: 'mood-mirror', icon_emoji: '🪞', title: 'Mood Mirror', category: 'Empathy',
+    description: "Guess your partner's current mood from clues", bond_points_reward: 5, instructions: '',
+    difficulty: 'easy', estimated_minutes: 5,
   },
   {
-    id: 'emotion-charades', emoji: '🎭', name: 'Emotion Charades', category: 'Expression',
-    desc: 'Act out emotions across cultures', bond_points: 10,
-    color: 'from-purple-500 to-violet-500', players: '2 Players', time: '5-10 min',
+    id: 'emotion-charades', game_type: 'emotion-charades', icon_emoji: '🎭', title: 'Emotion Charades', category: 'Expression',
+    description: 'Act out emotions across cultures', bond_points_reward: 10, instructions: '',
+    difficulty: 'medium', estimated_minutes: 10,
   },
   {
-    id: 'cultural-trivia', emoji: '🧠', name: 'Cultural Trivia', category: 'Knowledge',
-    desc: 'Test your knowledge of each other\'s cultures', bond_points: 8,
-    color: 'from-blue-500 to-indigo-500', players: '2 Players', time: '5 min',
-  },
-  {
-    id: 'would-you-rather', emoji: '🤔', name: 'Would You Rather', category: 'Fun',
-    desc: 'Cross-cultural dilemma questions', bond_points: 5,
-    color: 'from-amber-500 to-orange-500', players: '2+ Players', time: '3-5 min',
-  },
-  {
-    id: 'story-builder', emoji: '📖', name: 'Story Builder', category: 'Creativity',
-    desc: 'Build a story together, one sentence at a time', bond_points: 15,
-    color: 'from-green-500 to-emerald-500', players: '2+ Players', time: '10-15 min',
-  },
-  {
-    id: 'recipe-swap', emoji: '🍳', name: 'Recipe Swap', category: 'Culture',
-    desc: 'Share and compare traditional recipes', bond_points: 12,
-    color: 'from-red-500 to-orange-500', players: '2 Players', time: '10 min',
-  },
-  {
-    id: 'word-exchange', emoji: '📝', name: 'Word Exchange', category: 'Language',
-    desc: 'Teach each other words in your languages', bond_points: 8,
-    color: 'from-familia-500 to-bond-500', players: '2 Players', time: '5 min',
-  },
-  {
-    id: 'gratitude-chain', emoji: '🙏', name: 'Gratitude Chain', category: 'Bonding',
-    desc: 'Take turns sharing what you appreciate about each other', bond_points: 20,
-    color: 'from-heart-500 to-pink-500', players: '2 Players', time: '5-10 min',
+    id: 'would-you-rather', game_type: 'would-you-rather', icon_emoji: '🤔', title: 'Would You Rather', category: 'Fun',
+    description: 'Cross-cultural dilemma questions', bond_points_reward: 5, instructions: '',
+    difficulty: 'easy', estimated_minutes: 5,
   },
 ];
 
@@ -62,13 +55,50 @@ const WYR_QUESTIONS = [
 
 type GameState = 'catalog' | 'playing' | 'results';
 
+const GAME_COLORS: Record<string, string> = {
+  'emotional': 'from-pink-500 to-rose-500',
+  'cultural': 'from-blue-500 to-indigo-500',
+  'creative': 'from-green-500 to-emerald-500',
+  'reflective': 'from-amber-500 to-yellow-500',
+  'fun': 'from-purple-500 to-violet-500',
+  'default': 'from-familia-500 to-bond-500',
+};
+
 export default function GamesPage() {
+  const { user, relationships } = useAuth();
+  const [games, setGames] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<GameState>('catalog');
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [currentQ, setCurrentQ] = useState(0);
   const [myChoices, setMyChoices] = useState<string[]>([]);
   const [partnerChoices, setPartnerChoices] = useState<string[]>([]);
   const [showPartnerChoice, setShowPartnerChoice] = useState(false);
+  const [totalBondPoints, setTotalBondPoints] = useState(0);
+  
+  // Get actual partner name from relationships or use demo
+  const partnerName = relationships.length > 0 
+    ? (relationships[0]?.partner?.display_name || 'Your partner')
+    : 'Demo Partner';
+
+  useEffect(() => {
+    const loadGames = async () => {
+      try {
+        const data = await api.getGames();
+        if (data.games && data.games.length > 0) {
+          setGames(data.games);
+        } else {
+          setGames(FALLBACK_GAMES);
+        }
+      } catch (err) {
+        console.error('Failed to load games:', err);
+        setGames(FALLBACK_GAMES);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadGames();
+  }, []);
 
   const startGame = (gameId: string) => {
     setSelectedGame(gameId);
@@ -92,11 +122,21 @@ export default function GamesPage() {
         setCurrentQ(currentQ + 1);
       } else {
         setState('results');
+        // Award bond points
+        const game = games.find(g => g.id === selectedGame || g.game_type === selectedGame);
+        if (game) {
+          setTotalBondPoints(prev => prev + game.bond_points_reward);
+          toast.success(`+${game.bond_points_reward} bond points earned!`);
+        }
       }
     }, 2000);
   };
 
   const matchCount = myChoices.filter((c, i) => c === partnerChoices[i]).length;
+
+  const getGameColor = (category: string) => {
+    return GAME_COLORS[category.toLowerCase()] || GAME_COLORS['default'];
+  };
 
   return (
     <div className="min-h-screen pb-24">
@@ -115,7 +155,7 @@ export default function GamesPage() {
           {state === 'catalog' && (
             <div className="ml-auto flex items-center gap-1.5 bg-amber-500/10 px-3 py-1.5 rounded-full ring-1 ring-amber-500/20">
               <Star className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-xs font-bold text-amber-400">83 pts</span>
+              <span className="text-xs font-bold text-amber-400">{user?.total_bond_points || totalBondPoints} pts</span>
             </div>
           )}
           {state === 'playing' && (
@@ -143,45 +183,51 @@ export default function GamesPage() {
                 <p className="text-white/40 text-sm">Games designed to deepen your cross-cultural connection</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                {GAMES.map((game, i) => (
-                  <motion.div
-                    key={game.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                  >
-                    <div
-                      className="rounded-2xl p-[1px] bg-gradient-to-br from-white/[0.08] to-white/[0.02] hover:from-purple-500/30 hover:to-pink-500/20 transition-all duration-300 cursor-pointer group"
-                      onClick={() => startGame(game.id)}
+              {isLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-familia-400" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  {games.map((game, i) => (
+                    <motion.div
+                      key={game.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
                     >
-                      <div className="glass-card !rounded-[15px] relative overflow-hidden">
-                        <div className={`absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r ${game.color} opacity-40 group-hover:opacity-100 transition-opacity`} />
-                      <div className="flex items-start gap-4">
-                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 group-hover:shadow-lg transition-all duration-200`}>
-                          {game.emoji}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-semibold group-hover:text-white transition-colors">{game.name}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/30 group-hover:bg-purple-500/10 group-hover:text-purple-300 transition-colors">
-                              {game.category}
-                            </span>
+                      <div
+                        className="rounded-2xl p-[1px] bg-gradient-to-br from-white/[0.08] to-white/[0.02] hover:from-purple-500/30 hover:to-pink-500/20 transition-all duration-300 cursor-pointer group"
+                        onClick={() => startGame(game.game_type || game.id)}
+                      >
+                        <div className="glass-card !rounded-[15px] relative overflow-hidden">
+                          <div className={`absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r ${getGameColor(game.category)} opacity-40 group-hover:opacity-100 transition-opacity`} />
+                        <div className="flex items-start gap-4">
+                          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getGameColor(game.category)} flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 group-hover:shadow-lg transition-all duration-200`}>
+                            {game.icon_emoji}
                           </div>
-                          <p className="text-xs text-white/40 mb-2">{game.desc}</p>
-                          <div className="flex items-center gap-3 text-[10px] text-white/25">
-                            <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {game.players}</span>
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {game.time}</span>
-                            <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full font-medium"><Star className="w-3 h-3" /> +{game.bond_points} pts</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold group-hover:text-white transition-colors">{game.title}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/30 group-hover:bg-purple-500/10 group-hover:text-purple-300 transition-colors">
+                                {game.category}
+                              </span>
+                            </div>
+                            <p className="text-xs text-white/40 mb-2">{game.description}</p>
+                            <div className="flex items-center gap-3 text-[10px] text-white/25">
+                              <span className="flex items-center gap-1"><Users className="w-3 h-3" /> 2 Players</span>
+                              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {game.estimated_minutes} min</span>
+                              <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full font-medium"><Star className="w-3 h-3" /> +{game.bond_points_reward} pts</span>
+                            </div>
                           </div>
+                          <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
                         </div>
-                        <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all" />
+                        </div>
                       </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -238,7 +284,7 @@ export default function GamesPage() {
                           animate={{ opacity: 1, y: 0 }}
                           className="mt-3 inline-flex items-center gap-1.5 text-sm text-green-400 bg-green-500/10 px-3 py-1 rounded-full"
                         >
-                          ✨ Maria also chose this! 🎉
+                          ✨ {partnerName} also chose this! 🎉
                         </motion.div>
                       )}
                       {showPartnerChoice && partnerChoices[currentQ] !== 'a' && myChoices[currentQ] === 'a' && (
@@ -271,7 +317,7 @@ export default function GamesPage() {
                           animate={{ opacity: 1, y: 0 }}
                           className="mt-3 inline-flex items-center gap-1.5 text-sm text-green-400 bg-green-500/10 px-3 py-1 rounded-full"
                         >
-                          ✨ Maria also chose this! 🎉
+                          ✨ {partnerName} also chose this! 🎉
                         </motion.div>
                       )}
                       {showPartnerChoice && partnerChoices[currentQ] !== 'b' && myChoices[currentQ] === 'b' && (
@@ -305,7 +351,8 @@ export default function GamesPage() {
                 {matchCount >= 4 ? 'You think alike!' : matchCount >= 3 ? 'Great connection!' : 'Interesting differences!'}
               </motion.h2>
               <motion.p className="text-white/40 mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
-                You and Maria matched on {matchCount} out of {WYR_QUESTIONS.length} questions
+                You and {partnerName} matched on {matchCount} out of {WYR_QUESTIONS.length} questions
+                {relationships.length === 0 && <span className="block text-xs text-amber-400/60 mt-1">(Demo mode - find a match to play together!)</span>}
               </motion.p>
 
               <div className="relative max-w-sm mx-auto mb-8 rounded-2xl p-[1px] bg-gradient-to-br from-purple-500/40 via-pink-500/20 to-amber-500/40">

@@ -8,11 +8,11 @@ async def find_match(user_id: str, seeking_role: str, offering_role: str) -> dic
     db = get_supabase()
     
     # Get user's profile and preferences
-    user = db.table("profiles").select("*").eq("id", user_id).single().execute()
-    if not user.data:
+    user = db.table("profiles").select("*").eq("id", user_id).execute()
+    if not user.data or len(user.data) == 0:
         return None
     
-    user_data = user.data
+    user_data = user.data[0]
     user_langs = db.table("user_languages").select("language_code").eq("user_id", user_id).execute()
     user_lang_codes = [l["language_code"] for l in (user_langs.data or [])]
     
@@ -32,8 +32,9 @@ async def find_match(user_id: str, seeking_role: str, offering_role: str) -> dic
     compatible_offering = role_map.get(seeking_role, seeking_role)
     
     # Search for compatible users in the queue
+    # Use explicit foreign key relationship to avoid ambiguity
     queue = db.table("matching_queue") \
-        .select("*, profiles(*)") \
+        .select("*, profiles!matching_queue_user_id_fkey(*)") \
         .eq("status", "searching") \
         .eq("seeking_role", compatible_seeking) \
         .eq("offering_role", compatible_offering) \

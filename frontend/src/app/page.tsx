@@ -110,6 +110,36 @@ const STATS = [
   { value: '98%', label: 'Say It Changed Their Life', icon: <Star className="w-5 h-5" /> },
 ];
 
+const EMOTIONAL_STORIES = [
+  {
+    quote: "I lost my grandmother when I was 15. Maria filled that void in my heart. She taught me recipes, shared her wisdom, and celebrated my graduation from Brazil — all through Familia.",
+    author: "Yuki Tanaka",
+    location: "Tokyo, Japan",
+    flag: "🇯🇵",
+    role: "Digital Granddaughter",
+    avatar: "👧",
+    color: "from-pink-500/20 to-rose-500/20",
+  },
+  {
+    quote: "As a 68-year-old widow, I felt invisible. Now I have three 'children' from India, Kenya, and Mexico who call me every week. They gave me a reason to wake up smiling.",
+    author: "Elena Rossi",
+    location: "Rome, Italy",
+    flag: "🇮🇹",
+    role: "Digital Mother",
+    avatar: "👵",
+    color: "from-amber-500/20 to-orange-500/20",
+  },
+  {
+    quote: "Growing up in foster care, I never had a family. Through Familia, I found a father figure in Germany, a sister in Nigeria, and a grandmother in Brazil. For the first time, I belong.",
+    author: "James Okonkwo",
+    location: "London, UK",
+    flag: "🇬🇧",
+    role: "Digital Son",
+    avatar: "👦",
+    color: "from-blue-500/20 to-indigo-500/20",
+  },
+];
+
 /* ─────────────────────────────────────────────
    COMPONENT
    ───────────────────────────────────────────── */
@@ -221,11 +251,11 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.8 }}
             >
-              <span className="gradient-text text-glow">Real People.</span>{' '}
+              <span className="gradient-text text-glow">Family Has</span>{' '}
               <br className="sm:hidden" />
-              <span className="gradient-text-cool">Real Bonds.</span>
+              <span className="gradient-text-cool">No Borders.</span>
               <br />
-              <span className="text-white/90">No Borders.</span>
+              <span className="text-white/90">Love Has No Language.</span>
             </motion.h1>
 
             {/* Subheadline */}
@@ -235,10 +265,11 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
             >
-              Connect with real humans across the world. Form digital families.
+              In a world of 8 billion, no one should feel alone. Find your grandmother in Brazil, 
+              your mentor in Japan, your sibling in Nigeria.
               <br className="hidden sm:block" />
-              <span className="text-familia-400 font-medium">Technology bridges language.</span>{' '}
-              <span className="text-bond-400 font-medium">Humans create family.</span>
+              <span className="text-familia-400 font-medium">Because family isn&apos;t born —</span>{' '}
+              <span className="text-bond-400 font-medium">it&apos;s chosen.</span>
             </motion.p>
 
             {/* CTAs */}
@@ -649,6 +680,99 @@ export default function HomePage() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════
+          EMOTIONAL STORIES
+          ═══════════════════════════════════════════ */}
+      <section className="py-20 sm:py-28 px-4 sm:px-6 relative">
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-1/2 left-0 w-[500px] h-[500px] rounded-full bg-gradient-to-r from-heart-500/[0.04] to-transparent blur-3xl" />
+          <div className="absolute top-1/2 right-0 w-[500px] h-[500px] rounded-full bg-gradient-to-l from-bond-500/[0.04] to-transparent blur-3xl" />
+        </div>
+
+        <div className="max-w-5xl mx-auto relative">
+          <motion.div
+            className="text-center mb-14"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <motion.span
+              className="inline-flex items-center gap-2 text-sm font-semibold text-heart-400 bg-heart-500/10 border border-heart-500/15 rounded-full px-4 py-1.5 mb-5"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+            >
+              <Heart className="w-3.5 h-3.5" />
+              Real Stories, Real Hearts
+            </motion.span>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4">
+              <span className="text-white/90">Every Bond Tells a</span>{' '}
+              <span className="gradient-text text-glow">Beautiful Story</span>
+            </h2>
+            <p className="text-white/40 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+              These aren&apos;t just connections — they&apos;re lives transformed, hearts healed, 
+              and families reborn across oceans and languages.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {EMOTIONAL_STORIES.map((story, i) => (
+              <motion.div
+                key={story.author}
+                className="relative group"
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.15, duration: 0.5 }}
+              >
+                {/* Card glow on hover */}
+                <div className={`absolute -inset-1 rounded-[1.5rem] bg-gradient-to-br ${story.color} opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-500`} />
+                
+                <div className="relative glass-card !p-6 sm:!p-7 h-full transition-all duration-300 group-hover:border-white/[0.12] group-hover:-translate-y-1">
+                  {/* Quote icon */}
+                  <Quote className="w-8 h-8 text-familia-500/20 mb-4" />
+                  
+                  {/* Story quote */}
+                  <p className="text-white/60 text-sm sm:text-[15px] leading-relaxed mb-6 italic">
+                    &ldquo;{story.quote}&rdquo;
+                  </p>
+                  
+                  {/* Author info */}
+                  <div className="flex items-center gap-3 mt-auto">
+                    <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${story.color} flex items-center justify-center text-xl`}>
+                      {story.avatar}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-white/90 text-sm flex items-center gap-1.5">
+                        {story.author}
+                        <span>{story.flag}</span>
+                      </div>
+                      <div className="text-xs text-white/40">{story.role} · {story.location}</div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Emotional statement */}
+          <motion.div
+            className="text-center mt-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <p className="text-2xl sm:text-3xl font-bold text-white/80 max-w-3xl mx-auto leading-snug">
+              In a world where <span className="text-heart-400">8 billion hearts</span> beat, 
+              no one should beat <span className="text-white/40">alone</span>.
+            </p>
+            <p className="text-white/30 text-base mt-4">
+              Every stranger is just a family member you haven&apos;t met yet.
+            </p>
+          </motion.div>
         </div>
       </section>
 

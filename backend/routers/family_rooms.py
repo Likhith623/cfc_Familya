@@ -1,15 +1,16 @@
 """Family Rooms router - Group chats & cultural potlucks."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
 from models.schemas import CreateRoomRequest, InviteToRoomRequest, RoomMessageRequest, CreatePotluckRequest
 from services.supabase_client import get_supabase
 from services.translation_service import translate_text
+from services.auth_service import get_current_user_id, get_optional_user_id
 
 router = APIRouter(prefix="/rooms", tags=["Family Rooms"])
 
 
 @router.post("/create")
-async def create_room(req: CreateRoomRequest, user_id: str = ""):
+async def create_room(req: CreateRoomRequest, user_id: str = Depends(get_current_user_id)):
     """Create a new Global Family Room."""
     db = get_supabase()
     
@@ -47,7 +48,7 @@ async def create_room(req: CreateRoomRequest, user_id: str = ""):
 
 
 @router.get("/")
-async def get_user_rooms(user_id: str = ""):
+async def get_user_rooms(user_id: str = Depends(get_current_user_id)):
     """Get all rooms the user is a member of."""
     db = get_supabase()
     
@@ -60,6 +61,8 @@ async def get_user_rooms(user_id: str = ""):
     rooms = []
     for m in (memberships.data or []):
         room = m.get("family_rooms", {})
+        if not room:
+            continue
         # Get member count
         members = db.table("family_room_members") \
             .select("user_id, role_in_room, profiles(display_name, country, avatar_config)") \
@@ -79,7 +82,7 @@ async def get_user_rooms(user_id: str = ""):
 
 
 @router.post("/{room_id}/invite")
-async def invite_to_room(room_id: str, req: InviteToRoomRequest, user_id: str = ""):
+async def invite_to_room(room_id: str, req: InviteToRoomRequest, user_id: str = Depends(get_current_user_id)):
     """Invite a user to a family room."""
     db = get_supabase()
     
@@ -89,21 +92,21 @@ async def invite_to_room(room_id: str, req: InviteToRoomRequest, user_id: str = 
         .eq("room_id", room_id) \
         .eq("user_id", user_id) \
         .eq("status", "active") \
-        .single() \
         .execute()
     
-    if not membership.data:
+    if not membership.data or len(membership.data) == 0:
         raise HTTPException(status_code=403, detail="You are not a member of this room")
     
     # Check room capacity
-    room = db.table("family_rooms").select("max_members").eq("id", room_id).single().execute()
+    room = db.table("family_rooms").select("max_members").eq("id", room_id).execute()
     current_members = db.table("family_room_members") \
         .select("id", count="exact") \
         .eq("room_id", room_id) \
         .eq("status", "active") \
         .execute()
     
-    if current_members.count >= room.data.get("max_members", 8):
+    room_data = room.data[0] if room.data else {"max_members": 8}
+    if current_members.count >= room_data.get("max_members", 8):
         raise HTTPException(status_code=400, detail="Room is full")
     
     # Parent roles get moderator powers
@@ -130,7 +133,7 @@ async def invite_to_room(room_id: str, req: InviteToRoomRequest, user_id: str = 
 
 
 @router.post("/{room_id}/message")
-async def send_room_message(room_id: str, req: RoomMessageRequest, user_id: str = ""):
+async def send_room_message(room_id: str, req: RoomMessageRequest, user_id: str = Depends(get_current_user_id)):
     """Send a message to a family room with multi-language translation."""
     db = get_supabase()
     
@@ -175,7 +178,7 @@ async def send_room_message(room_id: str, req: RoomMessageRequest, user_id: str 
 
 
 @router.get("/{room_id}/messages")
-async def get_room_messages(room_id: str, limit: int = 50, user_id: str = ""):
+async def get_room_messages(room_id: str, limit: int = 50, user_id: str = Depends(get_current_user_id)):
     """Get messages for a family room."""
     db = get_supabase()
     
@@ -191,7 +194,7 @@ async def get_room_messages(room_id: str, limit: int = 50, user_id: str = ""):
 
 
 @router.post("/{room_id}/leave")
-async def leave_room(room_id: str, user_id: str = ""):
+async def leave_room(room_id: str, user_id: str = Depends(get_current_user_id)):
     """Initiate leaving a family room (7-day farewell period)."""
     db = get_supabase()
     
@@ -222,7 +225,7 @@ async def leave_room(room_id: str, user_id: str = ""):
 # ── Cultural Potluck ──────────────────────────────────
 
 @router.post("/{room_id}/potluck")
-async def create_potluck(room_id: str, req: CreatePotluckRequest, user_id: str = ""):
+async def create_potluck(room_id: str, req: CreatePotluckRequest, user_id: str = Depends(get_current_user_id)):
     """Create a cultural potluck event."""
     db = get_supabase()
     
@@ -259,7 +262,7 @@ async def create_potluck(room_id: str, req: CreatePotluckRequest, user_id: str =
 
 
 @router.get("/{room_id}/potlucks")
-async def get_potlucks(room_id: str):
+async def get_potlucks(room_id: str, user_id: str = Depends(get_current_user_id)):
     """Get all potluck events for a room."""
     db = get_supabase()
     

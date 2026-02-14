@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
-import { Globe, Eye, EyeOff, ArrowRight, Sparkles, MapPin, Calendar, ArrowLeft } from "lucide-react";
+import { Globe, Eye, EyeOff, ArrowRight, Sparkles, MapPin, Calendar, ArrowLeft, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import toast from "react-hot-toast";
 
 const COUNTRIES = [
   "India","Brazil","Japan","Germany","Korea","Mexico","Italy","Kenya",
@@ -16,6 +18,7 @@ const COUNTRIES = [
 const FLOATING = ["🌍","🤝","💕","🌏","✨","🌎"];
 
 export default function SignUpPage() {
+  const { signup } = useAuth();
   const [step, setStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
@@ -23,22 +26,39 @@ export default function SignUpPage() {
     date_of_birth: "", gender: "", country: "", city: "", timezone: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    setError("");
   };
 
   const handleSubmit = async () => {
     setLoading(true);
+    setError("");
+    
     try {
-      localStorage.setItem("familia_user", JSON.stringify({
-        ...form, id: "demo-" + Date.now(), is_verified: false,
-        care_score: 0, reliability_score: 100,
-      }));
-      localStorage.setItem("familia_token", "demo-token-" + Date.now());
-      window.location.href = "/verify";
-    } catch (error) {
-      console.error("Signup error:", error);
+      // Detect timezone
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
+      await signup({
+        username: form.username,
+        display_name: form.display_name,
+        email: form.email,
+        password: form.password,
+        date_of_birth: form.date_of_birth,
+        gender: form.gender || undefined,
+        country: form.country,
+        city: form.city || undefined,
+        timezone: timezone,
+      });
+      
+      toast.success("Welcome to Familia! 🎉");
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      setError(err.message || "Failed to create account. Please try again.");
+      toast.error(err.message || "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -165,6 +185,17 @@ export default function SignUpPage() {
                 </select>
               </div>
 
+              {/* Error message */}
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-red-400 text-sm text-center"
+                >
+                  {error}
+                </motion.p>
+              )}
+
               <div className="flex gap-3">
                 <motion.button onClick={() => setStep(1)} className="btn-secondary flex-1 flex items-center justify-center gap-1" whileTap={{ scale: 0.98 }}>
                   <ArrowLeft className="w-4 h-4" /> Back
@@ -177,7 +208,7 @@ export default function SignUpPage() {
                   disabled={loading || !form.country || !form.date_of_birth}
                 >
                   {loading ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <><Sparkles className="w-4 h-4" /> Create Account</>
                   )}
