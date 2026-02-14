@@ -8,8 +8,6 @@ Docs: https://developers.deepgram.com/docs
 import httpx
 from config import get_settings
 
-settings = get_settings()
-
 DEEPGRAM_STT_URL = "https://api.deepgram.com/v1/listen"
 
 
@@ -33,7 +31,7 @@ async def transcribe_audio(
             "words": [{"word": "Hello", "start": 0.0, "end": 0.42}, ...]
         }
     """
-    api_key = settings.DEEPGRAM_API_KEY
+    api_key = get_settings().DEEPGRAM_API_KEY
     if not api_key:
         return {
             "transcript": "",
@@ -99,7 +97,7 @@ async def transcribe_audio_auto_detect(
     Deepgram will detect the spoken language automatically.
     Useful when the sender's language is unknown.
     """
-    api_key = settings.DEEPGRAM_API_KEY
+    api_key = get_settings().DEEPGRAM_API_KEY
     if not api_key:
         return {"transcript": "", "confidence": 0, "language": "en", "words": []}
 

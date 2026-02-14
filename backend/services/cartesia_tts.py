@@ -9,8 +9,6 @@ Docs: https://docs.cartesia.ai
 import httpx
 from config import get_settings
 
-settings = get_settings()
-
 CARTESIA_TTS_URL = "https://api.cartesia.ai/tts/bytes"
 
 # Curated voices for Familia's supported languages
@@ -50,7 +48,7 @@ async def synthesize_speech(
             "success": True
         }
     """
-    api_key = settings.CARTESIA_API_KEY
+    api_key = get_settings().CARTESIA_API_KEY
     if not api_key:
         return {
             "audio_bytes": b"",

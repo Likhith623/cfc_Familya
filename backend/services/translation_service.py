@@ -11,8 +11,6 @@ import re
 from typing import Optional
 from config import get_settings
 
-settings = get_settings()
-
 # ─── Idioms database for nuance detection ──────────────────────────────────────
 COMMON_IDIOMS = {
     "en": {
@@ -182,7 +180,7 @@ async def _translate_with_google(
     target_lang: str,
 ) -> str:
     """Call Google Cloud Translation API v2 to translate text."""
-    api_key = settings.GOOGLE_TRANSLATE_API_KEY
+    api_key = get_settings().GOOGLE_TRANSLATE_API_KEY
     if not api_key:
         return f"[Translation unavailable] {text}"
 
@@ -220,7 +218,7 @@ async def _translate_with_google(
 
 async def detect_language(text: str) -> str:
     """Detect the language of *text* using Google Translate v2 /detect."""
-    api_key = settings.GOOGLE_TRANSLATE_API_KEY
+    api_key = get_settings().GOOGLE_TRANSLATE_API_KEY
     if not api_key:
         return "en"
 
