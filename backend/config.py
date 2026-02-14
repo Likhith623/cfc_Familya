@@ -1,4 +1,5 @@
 import os
+import sys
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 from typing import List
@@ -41,4 +42,41 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    
+    # Validate critical environment variables
+    missing_vars = []
+    if not settings.SUPABASE_URL:
+        missing_vars.append("SUPABASE_URL")
+    if not settings.SUPABASE_ANON_KEY:
+        missing_vars.append("SUPABASE_ANON_KEY")
+    if not settings.SUPABASE_SERVICE_KEY:
+        missing_vars.append("SUPABASE_SERVICE_KEY")
+    
+    if missing_vars:
+        error_msg = f"""
+╔═══════════════════════════════════════════════════════════════╗
+║                  CONFIGURATION ERROR                          ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Missing required environment variables: {', '.join(missing_vars)}
+
+To fix this in Cloud Run:
+1. Go to Cloud Run console
+2. Select your service
+3. Click "Edit & Deploy New Revision"
+4. Under "Variables & Secrets" → "Environment variables", add:
+   - SUPABASE_URL: Your Supabase project URL
+   - SUPABASE_ANON_KEY: Your Supabase anon key
+   - SUPABASE_SERVICE_KEY: Your Supabase service role key
+
+Optional variables (features will be disabled without them):
+   - GOOGLE_TRANSLATE_API_KEY: For translation features
+   - DEEPGRAM_API_KEY: For speech-to-text
+   - CARTESIA_API_KEY: For text-to-speech
+
+"""
+        print(error_msg, file=sys.stderr)
+        sys.exit(1)
+    
+    return settings
