@@ -55,6 +55,7 @@ export const api = {
   browseByRole: (role: string) => request(`/matching/browse-public/${role}`),
   browseByRoleAuth: (role: string) => request(`/matching/browse/${role}`),
   browseAllRoles: () => request('/matching/browse-all'),
+  connectWithUser: (targetUserId: string, role: string) => request(`/matching/connect/${targetUserId}?role=${encodeURIComponent(role)}`, { method: 'POST' }),
   
   // Chat
   sendMessage: (data: any) => request('/chat/send', { method: 'POST', body: JSON.stringify(data) }),

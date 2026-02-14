@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Globe, Heart, Search, Sparkles, Users, Star, Shield,
   ChevronRight, Loader2, MapPin, X, UserCheck, Eye, ArrowRight
@@ -43,7 +44,9 @@ type PageMode = 'browse-roles' | 'browse-results' | 'quick-match';
 
 export default function MatchingPage() {
   const { user, refreshRelationships } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<PageMode>('browse-roles');
+  const [connectingId, setConnectingId] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState('');
   const [profiles, setProfiles] = useState<BrowseProfile[]>([]);
   const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
@@ -348,24 +351,27 @@ export default function MatchingPage() {
                         <button className="flex-1 text-xs py-2 rounded-lg bg-[var(--bg-card-hover)] hover:bg-[var(--input-border)] transition flex items-center justify-center gap-1.5 text-muted hover:text-[var(--text-primary)]">
                           <Eye className="w-3 h-3" /> View
                         </button>
-                        <button onClick={async () => {
+                        <button disabled={connectingId === profile.id} onClick={async () => {
                           if (!user) { toast.error('Please log in'); return; }
-                          setMyRole(profile.seeking_role || selectedRole);
-                          setPartnerRole(selectedRole);
-                          setMode('quick-match'); setMatchStep('searching');
+                          setConnectingId(profile.id);
                           try {
-                            const result = await api.searchMatch({
-                              seeking_role: selectedRole,
-                              offering_role: profile.seeking_role || selectedRole,
-                              preferred_age_min: 18, preferred_age_max: 100,
-                              preferred_countries: [], language_priority: 'ease',
-                            });
-                            if (result.status === 'matched') {
-                              setMatchResult(result); setMatchStep('found'); await refreshRelationships();
-                            } else { setMatchStep('not-found'); }
-                          } catch { setMatchStep('not-found'); }
-                        }} className={`flex-1 text-xs py-2 rounded-lg bg-gradient-to-r ${selectedRoleData?.color || 'from-familia-500 to-bond-500'} text-white font-medium flex items-center justify-center gap-1.5 hover:shadow-md transition`}>
-                          <UserCheck className="w-3 h-3" /> Connect
+                            const result = await api.connectWithUser(profile.id, selectedRole);
+                            await refreshRelationships();
+                            const relId = result.relationship?.id;
+                            if (relId) {
+                              toast.success(result.message || `Connected with ${profile.display_name}!`);
+                              router.push(`/chat/${relId}`);
+                            } else {
+                              toast.success('Connected! Go to your dashboard to chat.');
+                            }
+                          } catch (err: any) {
+                            toast.error(err.message || 'Failed to connect');
+                          } finally {
+                            setConnectingId(null);
+                          }
+                        }} className={`flex-1 text-xs py-2 rounded-lg bg-gradient-to-r ${selectedRoleData?.color || 'from-familia-500 to-bond-500'} text-white font-medium flex items-center justify-center gap-1.5 hover:shadow-md transition disabled:opacity-50`}>
+                          {connectingId === profile.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />}
+                          {connectingId === profile.id ? 'Connecting...' : 'Connect'}
                         </button>
                       </div>
                     </motion.div>

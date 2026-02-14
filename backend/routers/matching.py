@@ -109,6 +109,84 @@ async def browse_by_role_public(role: str):
 
 # ─── Authenticated Endpoints ───────────────────────────────────────────────────
 
+@router.post("/connect/{target_user_id}")
+async def connect_with_user(
+    target_user_id: str,
+    role: str = Query(..., description="The role you are browsing (e.g. 'mother')"),
+    current_user: str = Depends(get_current_user_id)
+):
+    """Directly connect with a browsed user — creates a relationship and opens chat."""
+    if current_user == target_user_id:
+        raise HTTPException(status_code=400, detail="You cannot connect with yourself")
+
+    db = get_supabase()
+
+    # Check both profiles exist and aren't banned
+    my_profile = db.table("profiles").select("id, display_name, is_banned, matching_preferences").eq("id", current_user).execute()
+    target_profile = db.table("profiles").select("id, display_name, country, city, avatar_config, is_verified, care_score, bio, is_banned, matching_preferences").eq("id", target_user_id).execute()
+
+    if not my_profile.data:
+        raise HTTPException(status_code=404, detail="Your profile was not found")
+    if not target_profile.data:
+        raise HTTPException(status_code=404, detail="User not found")
+    if my_profile.data[0].get("is_banned"):
+        raise HTTPException(status_code=403, detail="Your account is banned")
+    if target_profile.data[0].get("is_banned"):
+        raise HTTPException(status_code=403, detail="This user is no longer available")
+
+    # Check if there's already an active relationship between them
+    existing = db.table("relationships") \
+        .select("id, status") \
+        .or_(
+            f"and(user_a_id.eq.{current_user},user_b_id.eq.{target_user_id}),"
+            f"and(user_a_id.eq.{target_user_id},user_b_id.eq.{current_user})"
+        ) \
+        .execute()
+
+    for rel in (existing.data or []):
+        if rel["status"] == "active":
+            # Already connected — just return the existing relationship
+            return {
+                "status": "already_connected",
+                "relationship": rel,
+                "partner": target_profile.data[0],
+                "message": "You are already connected with this person!"
+            }
+
+    # Determine roles
+    role_lower = role.lower().strip()
+    target_prefs = target_profile.data[0].get("matching_preferences") or {}
+    target_offering = (target_prefs.get("offering_role") or role_lower).lower().strip()
+
+    # My role: infer from my preferences or use a complementary role
+    my_prefs = my_profile.data[0].get("matching_preferences") or {}
+    my_offering = (my_prefs.get("offering_role") or "").lower().strip()
+    # If I don't have an offering role, use a sensible default
+    if not my_offering:
+        role_complements = {
+            "mother": "son", "father": "daughter", "son": "mother", "daughter": "father",
+            "mentor": "student", "student": "mentor", "brother": "sister", "sister": "brother",
+            "friend": "friend", "grandparent": "grandchild", "grandchild": "grandparent",
+            "sibling": "sibling", "penpal": "penpal",
+        }
+        my_offering = role_complements.get(role_lower, "friend")
+
+    # Create the relationship
+    relationship = await create_relationship(
+        user_a_id=current_user,
+        user_b_id=target_user_id,
+        role_a=my_offering,
+        role_b=target_offering
+    )
+
+    return {
+        "status": "connected",
+        "relationship": relationship,
+        "partner": target_profile.data[0],
+        "message": f"You are now connected with {target_profile.data[0].get('display_name', 'your new bond')}!"
+    }
+
+
 @router.post("/search")
 async def search_for_match(req: MatchRequest, user_id: str = Depends(get_current_user_id)):
     """Enter the matching queue and search for a partner."""

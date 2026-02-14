@@ -60,10 +60,36 @@ export default function ChatPage() {
       }
     };
 
-    if (relationshipId) {
+    if (relationshipId && user) {
       loadChat();
     }
-  }, [relationshipId]);
+  }, [relationshipId, user]);
+
+  // Poll for new messages every 3 seconds (like WhatsApp)
+  useEffect(() => {
+    if (!relationshipId || !user || isLoading) return;
+    
+    const pollMessages = async () => {
+      try {
+        const msgData = await api.getMessages(relationshipId, 50);
+        const newMessages = msgData.messages || [];
+        // Only update if new messages arrived (compare count & last id)
+        setMessages(prev => {
+          if (newMessages.length !== prev.length || 
+              (newMessages.length > 0 && prev.length > 0 && 
+               newMessages[newMessages.length - 1]?.id !== prev[prev.length - 1]?.id)) {
+            return newMessages;
+          }
+          return prev;
+        });
+      } catch {
+        // Silently ignore polling errors
+      }
+    };
+    
+    const interval = setInterval(pollMessages, 3000);
+    return () => clearInterval(interval);
+  }, [relationshipId, user, isLoading]);
 
   useEffect(() => {
     scrollToBottom();
