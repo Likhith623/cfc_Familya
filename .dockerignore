@@ -1,0 +1,32 @@
+# Dependencies & build artifacts
+frontend/node_modules/
+frontend/.next/
+backend/__pycache__/
+backend/venv/
+backend/models/__pycache__/
+backend/routers/__pycache__/
+backend/services/__pycache__/
+
+# Environment files (secrets come from Cloud Run env vars)
+**/.env
+**/.env.local
+**/.env*.local
+
+# Git & editor
+.git/
+.gitignore
+.DS_Store
+*.md
+
+# Docker files (don't copy into themselves)
+docker-compose.yml
+deploy.sh
+**/Dockerfile
+**/.dockerignore
+**/cloudbuild.yaml
+
+# Scripts not needed in container
+scripts/
+
+# Supabase SQL (not needed at runtime)
+supabase/

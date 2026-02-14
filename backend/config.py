@@ -24,12 +24,14 @@ class Settings(BaseSettings):
     # Cartesia (Text-to-Speech)
     CARTESIA_API_KEY: str = ""
 
-    # CORS - parse comma-separated string
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:3001,http://localhost:3002"
+    # CORS - accept all origins (Cloud Run deployment)
+    CORS_ORIGINS: str = "*"
     
     @property
     def cors_origins_list(self) -> List[str]:
         """Return CORS origins as a list."""
+        if self.CORS_ORIGINS.strip() == "*":
+            return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     class Config:

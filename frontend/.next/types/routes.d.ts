@@ -5,7 +5,7 @@ type AppRoutes = "/" | "/avatar" | "/chat" | "/chat/[relationshipId]" | "/contes
 type PageRoutes = never
 type LayoutRoutes = "/"
 type RedirectRoutes = never
-type RewriteRoutes = "/api/v1/[[...path]]"
+type RewriteRoutes = "/api/v1/[[...path]]" | "/docs" | "/health"
 type Routes = AppRoutes | PageRoutes | LayoutRoutes | RedirectRoutes | RewriteRoutes
 
 
@@ -17,8 +17,10 @@ interface ParamMap {
   "/chat/[relationshipId]": { "relationshipId": string; }
   "/contests": {}
   "/dashboard": {}
+  "/docs": {}
   "/family-rooms": {}
   "/games": {}
+  "/health": {}
   "/login": {}
   "/matching": {}
   "/notifications": {}

@@ -1,7 +1,1 @@
-{
-  "/dashboard/page": "app/dashboard/page.js",
-  "/games/page": "app/games/page.js",
-  "/family-rooms/page": "app/family-rooms/page.js",
-  "/profile/page": "app/profile/page.js",
-  "/avatar/page": "app/avatar/page.js"
-}
+{}
