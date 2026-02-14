@@ -18,9 +18,10 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  // Don't show bottom nav on landing, login, or signup pages
+  // Don't show bottom nav on landing, login, signup, or active chat conversation pages
   const hiddenPaths = ['/', '/login', '/signup', '/verify'];
-  if (hiddenPaths.includes(pathname) || !user) {
+  const isInChatConversation = pathname.startsWith('/chat/') && pathname !== '/chat';
+  if (hiddenPaths.includes(pathname) || isInChatConversation || !user) {
     return null;
   }
 
