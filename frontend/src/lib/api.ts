@@ -44,7 +44,8 @@ export const api = {
   markAllNotificationsRead: (userId: string) => request(`/profiles/${userId}/notifications/read-all`, { method: 'PUT' }),
   deleteNotification: (userId: string, notifId: string) => request(`/profiles/${userId}/notifications/${notifId}`, { method: 'DELETE' }),
   clearAllNotifications: (userId: string) => request(`/profiles/${userId}/notifications`, { method: 'DELETE' }),
-  setMyRole: (data: { offering_role: string; seeking_role?: string }) => request('/profiles/me/role', { method: 'POST', body: JSON.stringify(data) }),
+  // Accept either a single offering_role or an array of preferred_roles
+  setMyRole: (data: { offering_role?: string; seeking_role?: string; preferred_roles?: string[] }) => request('/profiles/me/role', { method: 'POST', body: JSON.stringify(data) }),
   updateMyStatus: (userId: string, status: string, message?: string) => request(`/profiles/${userId}/status?status=${status}${message ? `&status_message=${encodeURIComponent(message)}` : ''}`, { method: 'PUT' }),
   
   // Matching

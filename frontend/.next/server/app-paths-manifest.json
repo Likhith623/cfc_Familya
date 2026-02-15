@@ -1,9 +1,7 @@
 {
+  "/signup/page": "app/signup/page.js",
+  "/login/page": "app/login/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/family-rooms/page": "app/family-rooms/page.js",
-  "/profile/page": "app/profile/page.js",
-  "/games/page": "app/games/page.js",
-  "/avatar/page": "app/avatar/page.js",
-  "/chat/page": "app/chat/page.js",
-  "/chat/[relationshipId]/page": "app/chat/[relationshipId]/page.js"
+  "/page": "app/page.js",
+  "/matching/page": "app/matching/page.js"
 }

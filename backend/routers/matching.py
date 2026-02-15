@@ -41,9 +41,9 @@ async def browse_by_role(role: str):
             detail=f"Invalid role '{role}'. Valid roles: {', '.join(VALID_ROLES)}"
         )
     
-    # Get ALL profiles that aren't banned — search matching_preferences JSONB for role info
+    # Get ALL profiles that aren't banned — include top-level offering/role columns
     profiles = db.table("profiles") \
-        .select("id, display_name, country, city, avatar_config, is_verified, care_score, bio, matching_preferences") \
+        .select("id, display_name, country, city, avatar_config, is_verified, care_score, bio, matching_preferences, offering_role, role") \
         .eq("is_banned", False) \
         .execute()
     
@@ -54,9 +54,9 @@ async def browse_by_role(role: str):
         if profile["id"] in seen_ids:
             continue
             
-        # Check matching_preferences JSONB for role info
+        # Check matching_preferences JSONB and top-level columns for role info
         prefs = profile.get("matching_preferences") or {}
-        pref_offering = (prefs.get("offering_role") or "").lower().strip()
+        pref_offering = (prefs.get("offering_role") or profile.get("offering_role") or profile.get("role") or "").lower().strip()
         preferred_roles = [r.lower().strip() for r in (prefs.get("preferred_roles") or [])]
         
         # Check if any of the search roles match
@@ -325,17 +325,29 @@ async def browse_all_roles():
     db = get_supabase()
 
     profiles_result = db.table("profiles") \
-        .select("id, matching_preferences") \
+        .select("id, matching_preferences, offering_role, role") \
         .eq("is_banned", False) \
         .execute()
 
     role_counts = {role: 0 for role in VALID_ROLES}
     for profile in (profiles_result.data or []):
-        # Check matching_preferences JSONB for role info
+        # Collect the set of roles this profile should contribute to (dedupe)
         prefs = profile.get("matching_preferences") or {}
-        offering = (prefs.get("offering_role") or "").lower().strip()
-        if offering in role_counts:
-            role_counts[offering] += 1
+        # Consider top-level offering/role column as fallback
+        offering = (prefs.get("offering_role") or profile.get("offering_role") or profile.get("role") or "").lower().strip()
+        preferred = [r.lower().strip() for r in (prefs.get("preferred_roles") or []) if r]
+
+        roles_for_profile = set()
+        if offering:
+            roles_for_profile.add(offering)
+        for r in preferred:
+            if r:
+                roles_for_profile.add(r)
+
+        # Increment each role once per profile
+        for r in roles_for_profile:
+            if r in role_counts:
+                role_counts[r] += 1
 
     return {
         "role_counts": role_counts,

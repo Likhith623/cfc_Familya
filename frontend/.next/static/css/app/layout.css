@@ -3318,6 +3318,10 @@ video {
 .ring-black\/5 {
   --tw-ring-color: rgb(0 0 0 / 0.05);
 }
+.ring-familia-400 {
+  --tw-ring-opacity: 1;
+  --tw-ring-color: rgb(255 140 90 / var(--tw-ring-opacity, 1));
+}
 .ring-familia-500\/20 {
   --tw-ring-color: rgb(255 107 53 / 0.2);
 }

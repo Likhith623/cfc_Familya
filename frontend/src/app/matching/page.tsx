@@ -55,6 +55,7 @@ export default function MatchingPage() {
   const [totalProfiles, setTotalProfiles] = useState(0);
 
   const [myRole, setMyRole] = useState('');
+  const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
   const [partnerRole, setPartnerRole] = useState('');
   const [matchStep, setMatchStep] = useState<'select-role' | 'select-partner' | 'searching' | 'found' | 'not-found'>('select-role');
   const [searchTime, setSearchTime] = useState(0);
@@ -91,29 +92,26 @@ export default function MatchingPage() {
 
   const startQuickMatch = async () => {
     if (!user) { toast.error('Please log in'); return; }
+    // Show globe/searching animation for a short fixed interval, then perform
+    // a quick search using the browse endpoint (which respects preferred_roles).
     setMatchStep('searching');
     setSearchTime(0);
     try {
-      const result = await api.searchMatch({
-        seeking_role: partnerRole, offering_role: myRole,
-        preferred_age_min: 18, preferred_age_max: 100,
-        preferred_countries: [], language_priority: 'ease',
-      });
-      if (result.status === 'matched') {
-        setMatchResult(result); setMatchStep('found'); await refreshRelationships();
+      // Wait ~3 seconds with the globe animation to feel responsive.
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Use authenticated browse endpoint to fetch profiles matching the partner role.
+      const result = await api.browseByRoleAuth(partnerRole);
+      const found = result.profiles || [];
+
+      // If we immediately found candidates, show them in the browse-results view.
+      if (found.length > 0) {
+        setProfiles(found);
+        setSelectedRole(partnerRole);
+        setMode('browse-results');
       } else {
-        let attempts = 0;
-        const poll = async (): Promise<void> => {
-          if (attempts >= 8) { setMatchStep('not-found'); return; }
-          attempts++;
-          await new Promise(r => setTimeout(r, 2500));
-          try {
-            const q = await api.checkQueue(user.id);
-            if (q.status === 'not_in_queue') { await refreshRelationships(); setMatchStep('not-found'); }
-            else await poll();
-          } catch { setMatchStep('not-found'); }
-        };
-        await poll();
+        // No immediate results — fall back to the queue-based matcher to try to match.
+        setMatchStep('not-found');
       }
     } catch (err: any) {
       toast.error(err.message || 'Match failed'); setMatchStep('select-partner');
@@ -393,9 +391,35 @@ export default function MatchingPage() {
                       <p className="text-muted">Choose your role in this cross-cultural bond</p>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {ROLES.map((role, i) => (
-                        <motion.button key={role.id} onClick={() => { setMyRole(role.id); setMatchStep('select-partner'); }}
-                          className="glass-card !p-4 text-center card-hover group"
+                      {ROLES.map((role, i) => {
+                        const selected = preferredRoles.includes(role.id);
+                        return (
+                        <motion.button key={role.id} onClick={async () => {
+                            // Toggle selection
+                            let updated: string[] = [];
+                            if (selected) {
+                              updated = preferredRoles.filter(r => r !== role.id);
+                              setPreferredRoles(updated);
+                            } else {
+                              updated = [...preferredRoles, role.id];
+                              setPreferredRoles(updated);
+                            }
+
+                            // Persist to server (preferred_roles)
+                            try {
+                              await api.setMyRole({ preferred_roles: updated });
+                              // update primary myRole to first selected
+                              if (updated.length > 0) setMyRole(updated[0]);
+                              // Refresh role counts so tiles show current numbers
+                              await loadRoleCounts();
+                            } catch (err: any) {
+                              toast.error(err.message || 'Failed to save role');
+                            }
+
+                            // Move to next step if at least one role selected
+                            if (updated.length > 0) setMatchStep('select-partner');
+                          }}
+                          className={`glass-card !p-4 text-center card-hover group ${selected ? 'ring-2 ring-familia-400' : ''}`}
                           whileTap={{ scale: 0.97 }} initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                           <div className={`w-14 h-14 mx-auto mb-3 rounded-2xl bg-gradient-to-br ${role.color} flex items-center justify-center text-2xl group-hover:scale-110 transition`}>
@@ -403,8 +427,8 @@ export default function MatchingPage() {
                           </div>
                           <div className="font-semibold text-sm mb-1">{role.label}</div>
                           <div className="text-[10px] text-muted">{role.desc}</div>
-                        </motion.button>
-                      ))}
+                        </motion.button>)
+                      })}
                     </div>
                     <button onClick={() => setMode('browse-roles')} className="mt-6 text-sm text-muted hover:text-[var(--text-primary)] transition mx-auto block">← Back to Browse</button>
                   </motion.div>

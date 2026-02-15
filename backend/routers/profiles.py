@@ -1,7 +1,7 @@
 """Profile management router."""
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from models.schemas import ProfileUpdate, LanguageInput
 from services.supabase_client import get_supabase
@@ -16,8 +16,9 @@ VALID_ROLES = ["mother", "father", "son", "daughter", "mentor", "student",
 
 
 class SetRoleRequest(BaseModel):
-    offering_role: str  # What role the user wants to BE
+    offering_role: Optional[str] = None  # What role the user wants to BE (optional)
     seeking_role: Optional[str] = None  # What role they're looking for (optional)
+    preferred_roles: Optional[List[str]] = None  # Allow selecting multiple preferred roles
 
 
 @router.post("/me/role")
@@ -25,12 +26,23 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
     """Set the current user's role for matching."""
     db = get_supabase()
     
-    role_lower = req.offering_role.lower().strip()
-    if role_lower not in VALID_ROLES:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Invalid role '{req.offering_role}'. Valid roles: {', '.join(VALID_ROLES)}"
-        )
+    # Normalize incoming preferred roles (if provided) or single offering_role
+    preferred = []
+    if req.preferred_roles:
+        for r in req.preferred_roles:
+            if not r:
+                continue
+            rl = r.lower().strip()
+            if rl not in VALID_ROLES:
+                raise HTTPException(status_code=400, detail=f"Invalid role '{r}'. Valid roles: {', '.join(VALID_ROLES)}")
+            preferred.append(rl)
+    elif req.offering_role:
+        role_lower = req.offering_role.lower().strip()
+        if role_lower not in VALID_ROLES:
+            raise HTTPException(status_code=400, detail=f"Invalid role '{req.offering_role}'. Valid roles: {', '.join(VALID_ROLES)}")
+        preferred = [role_lower]
+    else:
+        raise HTTPException(status_code=400, detail="You must provide either `offering_role` or `preferred_roles`")
     
     # Get current matching_preferences
     profile = db.table("profiles").select("matching_preferences").eq("id", current_user).execute()
@@ -39,13 +51,25 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
     
     # Update matching_preferences with the role (using JSONB which exists)
     prefs = profile.data[0].get("matching_preferences") or {}
-    prefs["offering_role"] = role_lower
-    prefs["preferred_roles"] = [role_lower]
+    # Set offering_role to the first preferred role if not explicitly set
+    if req.offering_role:
+        prefs["offering_role"] = req.offering_role.lower().strip()
+    else:
+        prefs["offering_role"] = preferred[0]
+
+    # Store deduplicated preferred roles
+    prefs["preferred_roles"] = list(dict.fromkeys(preferred))
     if req.seeking_role:
         prefs["seeking_role"] = req.seeking_role.lower().strip()
     
+    offering_role_val = prefs.get("offering_role")
+    seeking_role_val = prefs.get("seeking_role") if prefs.get("seeking_role") else None
+
     update_data = {
         "matching_preferences": prefs,
+        "offering_role": offering_role_val,
+        "seeking_role": seeking_role_val,
+        "role": offering_role_val,
         "updated_at": datetime.utcnow().isoformat()
     }
     
@@ -53,12 +77,16 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
     
     if not result.data:
         raise HTTPException(status_code=404, detail="Failed to update profile")
-    
+
+    offering_role = prefs.get("offering_role")
+    seeking_role = prefs.get("seeking_role") if prefs.get("seeking_role") else None
+
     return {
         "success": True,
-        "offering_role": role_lower,
-        "seeking_role": req.seeking_role.lower().strip() if req.seeking_role else None,
-        "message": f"You are now registered as a '{role_lower}'"
+        "offering_role": offering_role,
+        "seeking_role": seeking_role,
+        "preferred_roles": prefs.get("preferred_roles", []),
+        "message": f"You are now registered as a '{offering_role}'"
     }
 
 
