@@ -1,9 +1,8 @@
 {
-  "/dashboard/page": "app/dashboard/page.js",
-  "/login/page": "app/login/page.js",
-  "/matching/page": "app/matching/page.js",
-  "/games/page": "app/games/page.js",
-  "/profile/page": "app/profile/page.js",
   "/chat/[relationshipId]/page": "app/chat/[relationshipId]/page.js",
-  "/family-rooms/page": "app/family-rooms/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/chat/page": "app/chat/page.js",
+  "/matching/page": "app/matching/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/contests/page": "app/contests/page.js"
 }
