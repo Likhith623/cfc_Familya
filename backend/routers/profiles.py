@@ -27,8 +27,9 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
     db = get_supabase()
     
     # Normalize incoming preferred roles (if provided) or single offering_role
-    preferred = []
-    if req.preferred_roles:
+    preferred: List[str] = []
+    # Accept an explicit empty list to clear offered roles.
+    if req.preferred_roles is not None:
         for r in req.preferred_roles:
             if not r:
                 continue
@@ -41,8 +42,10 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
         if role_lower not in VALID_ROLES:
             raise HTTPException(status_code=400, detail=f"Invalid role '{req.offering_role}'. Valid roles: {', '.join(VALID_ROLES)}")
         preferred = [role_lower]
-    else:
-        raise HTTPException(status_code=400, detail="You must provide either `offering_role` or `preferred_roles`")
+    # If neither provided (both None) then error. If preferred_roles provided but empty,
+    # we'll clear the offering_role for the user.
+    elif req.preferred_roles is None and not req.offering_role:
+        raise HTTPException(status_code=400, detail="You must provide either `offering_role` or `preferred_roles` (empty list to clear)")
     
     # Get current matching_preferences
     profile = db.table("profiles").select("matching_preferences").eq("id", current_user).execute()
@@ -51,18 +54,19 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
     
     # Update matching_preferences with the role (using JSONB which exists)
     prefs = profile.data[0].get("matching_preferences") or {}
-    # Set offering_role to the first preferred role if not explicitly set
+    # Set offering_role to the first preferred role if not explicitly set.
+    # If preferred list is empty and no offering_role provided, clear offering_role.
     if req.offering_role:
         prefs["offering_role"] = req.offering_role.lower().strip()
     else:
-        prefs["offering_role"] = preferred[0]
+        prefs["offering_role"] = preferred[0] if len(preferred) > 0 else None
 
     # Store deduplicated preferred roles
     prefs["preferred_roles"] = list(dict.fromkeys(preferred))
     if req.seeking_role:
         prefs["seeking_role"] = req.seeking_role.lower().strip()
     
-    offering_role_val = prefs.get("offering_role")
+    offering_role_val = prefs.get("offering_role") if prefs.get("offering_role") else None
     seeking_role_val = prefs.get("seeking_role") if prefs.get("seeking_role") else None
 
     update_data = {

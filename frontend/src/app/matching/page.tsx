@@ -373,6 +373,39 @@ export default function MatchingPage() {
                     }} className="btn-primary text-sm">{offeredLoading ? 'Saving...' : 'Save Offered Roles'}</button>
                   </div>
                 </div>
+                <div className="mb-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {offeredRoles.length === 0 && <div className="text-xs text-muted">You haven't offered any roles yet.</div>}
+                    {offeredRoles.map((r) => {
+                      const role = ROLES.find(rr => rr.id === r);
+                      return (
+                        <div key={r} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-card)] border border-themed text-sm">
+                          <div className="mr-1">{role?.emoji || '❓'}</div>
+                          <div className="font-medium text-sm">{role?.label || r}</div>
+                          <button onClick={async () => {
+                            if (!user) { toast.error('Please log in'); return; }
+                            // Optimistic UI update
+                            const next = offeredRoles.filter(x => x !== r);
+                            setOfferedRoles(next);
+                            setOfferedLoading(true);
+                            try {
+                              await api.setMyOfferedRoles(user.id, next);
+                              toast.success('Removed role');
+                              await loadRoleCounts();
+                              try { await refreshUser(); } catch {}
+                            } catch (e: any) {
+                              // revert UI on failure
+                              setOfferedRoles(offeredRoles);
+                              console.error(e);
+                              toast.error(e?.message || 'Failed to remove role');
+                            } finally { setOfferedLoading(false); }
+                          }} className="ml-2 text-xs text-muted hover:text-[var(--text-primary)]">✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {ROLES.map((role) => {
                     const selected = offeredRoles.includes(role.id);
