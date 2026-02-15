@@ -1,4 +1,7 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+import { supabase } from './supabase';
+// Treat an explicit '*' or empty value as unset so we fall back to the default
+const rawApiBase = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE = (rawApiBase && rawApiBase !== '*') ? rawApiBase : '/api/v1';
 
 async function request(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('familia_token') : null;
@@ -16,13 +19,19 @@ async function request(endpoint: string, options: RequestInit = {}) {
     ...options,
     headers,
   });
-  
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-    throw new Error(error.detail || 'Request failed');
+  try {
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
+      throw new Error(error.detail || 'Request failed');
+    }
+    return response.json();
+  } catch (e: any) {
+    // Network / CORS / server unreachable
+    if (e instanceof TypeError) {
+      throw new Error(`Network error or server unreachable (${API_BASE}${endpoint})`);
+    }
+    throw e;
   }
-  
-  return response.json();
 }
 
 export const api = {
@@ -57,6 +66,48 @@ export const api = {
   browseByRoleAuth: (role: string) => request(`/matching/browse/${role}`),
   browseAllRoles: () => request('/matching/browse-all'),
   connectWithUser: (targetUserId: string, role: string) => request(`/matching/connect/${targetUserId}?role=${encodeURIComponent(role)}`, { method: 'POST' }),
+
+  // Supabase-backed offering_role table helpers
+  // Fetch all offered roles for a given user from the `offering_role` table
+  getMyOfferedRoles: async (userId: string) => {
+    if (!userId) return [];
+    try {
+      const { data, error } = await supabase.from('offering_role').select('role').eq('user_id', userId);
+      if (error) {
+        // If Supabase returns an error (RLS/unauthorized), fall back to server API
+        throw error;
+      }
+      return (data || []).map((r: any) => r.role);
+    } catch (supabaseErr) {
+      // Fallback: call backend profile endpoint which already returns offering_role / matching_preferences
+      try {
+        const profile = await request('/profiles/me', { headers: { 'X-User-ID': userId } });
+        const prefs = profile?.profile?.matching_preferences || {};
+        const preferred = Array.isArray(prefs.preferred_roles) ? prefs.preferred_roles : [];
+        const offering = prefs.offering_role || profile?.profile?.offering_role || profile?.profile?.role;
+        const combined = [] as string[];
+        if (offering) combined.push(offering);
+        for (const r of preferred) if (r && !combined.includes(r)) combined.push(r);
+        return combined;
+      } catch (backendErr) {
+        // Re-throw a clearer error for callers to handle
+        const err = backendErr || supabaseErr || new Error('Failed to load offered roles');
+        throw err;
+      }
+    }
+  },
+
+  // Replace the user's offered roles with the provided array.
+  // Persist offered roles via backend endpoint (/profiles/me/role) which
+  // updates the profile's `matching_preferences` and `offering_role` fields.
+  setMyOfferedRoles: async (userId: string, roles: string[]) => {
+    if (!userId) throw new Error('User ID required');
+    const normalized = Array.isArray(roles) ? roles.filter(Boolean) : [];
+    // Call backend which enforces validation and writes to profiles.matching_preferences
+    const body = { preferred_roles: normalized };
+    const resp = await request('/profiles/me/role', { method: 'POST', body: JSON.stringify(body), headers: { 'X-User-ID': userId } });
+    return resp;
+  },
   
   // Chat
   sendMessage: (data: any) => request('/chat/send', { method: 'POST', body: JSON.stringify(data) }),

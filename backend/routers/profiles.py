@@ -89,37 +89,44 @@ async def set_my_role(req: SetRoleRequest, current_user: str = Depends(get_curre
         "message": f"You are now registered as a '{offering_role}'"
     }
 
+# Ensure the static `/me` route is registered before the parameterized `/{user_id}`
+# so that requests to `/profiles/me` are handled by the current-user handler.
+@router.get("/me")
+async def get_my_profile(current_user: str = Depends(get_current_user_id)):
+    """Get the current user's profile."""
+    return await get_profile(current_user, current_user)
+
 
 @router.get("/{user_id}")
 async def get_profile(user_id: str, current_user: str = Depends(get_optional_user_id)):
     """Get a user's public profile."""
     db = get_supabase()
-    
+
     profile = db.table("profiles") \
         .select("id, username, display_name, country, city, timezone, bio, voice_bio_url, profile_photo_url, avatar_config, is_verified, care_score, reliability_score, total_bond_points, status, created_at") \
         .eq("id", user_id) \
         .execute()
-    
+
     if not profile.data or len(profile.data) == 0:
         raise HTTPException(status_code=404, detail="Profile not found")
-    
+
     profile_data = profile.data[0]
-    
+
     languages = db.table("user_languages").select("*").eq("user_id", user_id).execute()
-    
+
     # Get achievement count
     achievements = db.table("user_achievements") \
         .select("*, achievements(name, icon_emoji, rarity)") \
         .eq("user_id", user_id) \
         .execute()
-    
+
     # Get active relationships count
     rels = db.table("relationships") \
         .select("id") \
         .or_(f"user_a_id.eq.{user_id},user_b_id.eq.{user_id}") \
         .eq("status", "active") \
         .execute()
-    
+
     return {
         "profile": profile_data,
         "languages": languages.data or [],
@@ -130,6 +137,9 @@ async def get_profile(user_id: str, current_user: str = Depends(get_optional_use
 
 # ─── Current User Endpoints (/me) ───────────────────────────────────────────────
 
+# Ensure the static `/me` route is registered before the parameterized `/{user_id}`
+# so that requests to `/profiles/me` are handled by this function instead of
+# being captured as a `user_id` path parameter.
 @router.get("/me")
 async def get_my_profile(current_user: str = Depends(get_current_user_id)):
     """Get the current user's profile."""

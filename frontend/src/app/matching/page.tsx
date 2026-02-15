@@ -27,6 +27,48 @@ const ROLES = [
   { id: 'penpal', label: 'Pen Pal', emoji: '✉️', desc: 'Exchange letters across the globe', color: 'from-violet-500 to-purple-500', bg: 'bg-violet-500/10', text: 'text-violet-500' },
 ];
 
+// Alias groups should match backend `role_aliases`
+const ROLE_ALIASES: Record<string, string[]> = {
+  sibling: ['brother', 'sister', 'sibling'],
+  brother: ['brother', 'sibling'],
+  sister: ['sister', 'sibling'],
+  penpal: ['penpal', 'friend'],
+};
+
+function offeringMatchesSearch(offering: string | undefined, searchRole: string) {
+  if (!offering) return false;
+  const o = offering.toLowerCase().trim();
+  const s = searchRole.toLowerCase().trim();
+  if (o === s) return true;
+  const aliases = ROLE_ALIASES[s];
+  if (aliases && aliases.includes(o)) return true;
+  return false;
+}
+
+function offeringMatchesProfile(profile: any, searchRole: string) {
+  // Try top-level offering_role first
+  if (offeringMatchesSearch(profile?.offering_role, searchRole)) return true;
+
+  // Fallback to matching_preferences.offering_role
+  try {
+    const prefs = profile?.matching_preferences;
+    if (prefs) {
+      if (offeringMatchesSearch(prefs.offering_role, searchRole)) return true;
+      const preferred = Array.isArray(prefs.preferred_roles) ? prefs.preferred_roles : [];
+      for (const r of preferred) {
+        if (offeringMatchesSearch(r, searchRole)) return true;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // Also check top-level `role` field (older rows)
+  if (offeringMatchesSearch(profile?.role, searchRole)) return true;
+
+  return false;
+}
+
 interface BrowseProfile {
   id: string;
   display_name: string;
@@ -43,7 +85,7 @@ interface BrowseProfile {
 type PageMode = 'browse-roles' | 'browse-results' | 'quick-match';
 
 export default function MatchingPage() {
-  const { user, refreshRelationships } = useAuth();
+  const { user, refreshRelationships, refreshUser } = useAuth();
   const router = useRouter();
   const [mode, setMode] = useState<PageMode>('browse-roles');
   const [connectingId, setConnectingId] = useState<string | null>(null);
@@ -56,12 +98,31 @@ export default function MatchingPage() {
 
   const [myRole, setMyRole] = useState('');
   const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
+  const [offeredRoles, setOfferedRoles] = useState<string[]>([]);
+  const [offeredLoading, setOfferedLoading] = useState(false);
   const [partnerRole, setPartnerRole] = useState('');
   const [matchStep, setMatchStep] = useState<'select-role' | 'select-partner' | 'searching' | 'found' | 'not-found'>('select-role');
   const [searchTime, setSearchTime] = useState(0);
   const [matchResult, setMatchResult] = useState<any>(null);
 
   useEffect(() => { loadRoleCounts(); }, []);
+
+  // Load user's offered roles from Supabase when authenticated
+  useEffect(() => {
+    const load = async () => {
+      if (!user) return;
+      try {
+        setOfferedLoading(true);
+        const roles = await api.getMyOfferedRoles(user.id);
+        setOfferedRoles(Array.isArray(roles) ? roles : []);
+      } catch (e) {
+        console.error('Failed to load offered roles', e);
+      } finally {
+        setOfferedLoading(false);
+      }
+    };
+    load();
+  }, [user]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -77,17 +138,80 @@ export default function MatchingPage() {
     } catch (err) { console.error('Failed to load role counts:', err); }
   };
 
+  // Shared helper: fetch profiles for a role, optionally using the authenticated
+  // endpoint. Returns filtered profiles (matching offering role) or empty array.
+  const fetchProfilesForRole = async (roleId: string, opts?: { auth?: boolean, minMs?: number, poll?: boolean }) => {
+    const { auth = false, minMs = 0, poll = false } = opts || {};
+    const start = Date.now();
+    const intervalMs = 2000;
+    const maxAttempts = 12;
+    let attempts = 0;
+
+    const callApi = async () => {
+      if (auth) return await api.browseByRoleAuth(roleId);
+      return await api.browseByRole(roleId);
+    };
+
+    if (!poll) {
+      const result = await callApi();
+      const raw = result.profiles || [];
+      const filtered = raw.filter((p: any) => offeringMatchesProfile(p, roleId));
+      const elapsed = Date.now() - start;
+      if (elapsed < minMs) await new Promise((r) => setTimeout(r, minMs - elapsed));
+      return filtered;
+    }
+
+    while (attempts < maxAttempts) {
+      attempts++;
+      const result = await callApi();
+      const raw = result.profiles || [];
+      const filtered = raw.filter((p: any) => offeringMatchesProfile(p, roleId));
+      if (filtered.length > 0) {
+        const elapsed = Date.now() - start;
+        if (elapsed < minMs) await new Promise((r) => setTimeout(r, minMs - elapsed));
+        return filtered;
+      }
+
+      // stop early if user cancelled the search
+      if (matchStep !== 'searching') return [];
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+
+    const elapsed = Date.now() - start;
+    if (elapsed < minMs) await new Promise((r) => setTimeout(r, minMs - elapsed));
+    return [];
+  };
+
   const browseRole = async (roleId: string) => {
+    // Use the globe/search UI while we poll for actual results that match
+    // the selected role. Ensure at least 3s of animation for UX.
     setSelectedRole(roleId);
-    setMode('browse-results');
-    setIsLoading(true);
+    setPartnerRole(roleId);
+    setMatchStep('searching');
+    setSearchTime(0);
+    setMode('quick-match');
     setProfiles([]);
+
+    const start = Date.now();
+    const minMs = 3000;
+    const intervalMs = 2000;
+    const maxAttempts = 12; // ~24s
+    let attempts = 0;
+    let foundAny = false;
+
     try {
-      const result = await api.browseByRole(roleId);
-      setProfiles(result.profiles || []);
+      const filtered = await fetchProfilesForRole(roleId, { auth: false, minMs: 3000, poll: true });
+      if (filtered.length > 0) {
+        setProfiles(filtered);
+        setMode('browse-results');
+        setMatchStep('found');
+      } else {
+        setMatchStep('not-found');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Failed to browse');
-    } finally { setIsLoading(false); }
+      setMatchStep('not-found');
+    }
   };
 
   const startQuickMatch = async () => {
@@ -97,20 +221,19 @@ export default function MatchingPage() {
     setMatchStep('searching');
     setSearchTime(0);
     try {
-      // Wait ~3 seconds with the globe animation to feel responsive.
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // Poll the server until matching profiles appear (keep globe animation running).
+      const maxAttempts = 12; // ~24 seconds at 2s interval
+      const intervalMs = 2000;
+      let attempts = 0;
+      let foundAny = false;
 
-      // Use authenticated browse endpoint to fetch profiles matching the partner role.
-      const result = await api.browseByRoleAuth(partnerRole);
-      const found = result.profiles || [];
-
-      // If we immediately found candidates, show them in the browse-results view.
-      if (found.length > 0) {
-        setProfiles(found);
+      const filtered = await fetchProfilesForRole(partnerRole, { auth: true, minMs: 3000, poll: true });
+      if (filtered.length > 0) {
+        setProfiles(filtered);
         setSelectedRole(partnerRole);
         setMode('browse-results');
+        setMatchStep('found');
       } else {
-        // No immediate results — fall back to the queue-based matcher to try to match.
         setMatchStep('not-found');
       }
     } catch (err: any) {
@@ -224,6 +347,51 @@ export default function MatchingPage() {
                 })}
               </div>
 
+              {/* My Offered Roles - allow user to view and select multiple roles to offer */}
+              <div className="glass-card p-4 mb-8">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-sm font-semibold">My Offered Roles</div>
+                    <div className="text-xs text-muted">Select roles you can offer to others</div>
+                  </div>
+                  <div>
+                    <button onClick={async () => {
+                      if (!user) { toast.error('Please log in'); return; }
+                      try {
+                        setOfferedLoading(true);
+                        await api.setMyOfferedRoles(user.id, offeredRoles);
+                        toast.success('Saved offered roles');
+                        // Refresh counts, reload roles from backend and refresh local profile
+                        await loadRoleCounts();
+                        const roles = await api.getMyOfferedRoles(user.id);
+                        setOfferedRoles(Array.isArray(roles) ? roles : []);
+                        try { await refreshUser(); } catch (e) { /* ignore */ }
+                      } catch (e: any) {
+                        console.error(e);
+                        toast.error(e?.message || 'Failed to save offered roles');
+                      } finally { setOfferedLoading(false); }
+                    }} className="btn-primary text-sm">{offeredLoading ? 'Saving...' : 'Save Offered Roles'}</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {ROLES.map((role) => {
+                    const selected = offeredRoles.includes(role.id);
+                    return (
+                      <button key={role.id} onClick={() => {
+                        const next = selected ? offeredRoles.filter(r => r !== role.id) : [...offeredRoles, role.id];
+                        setOfferedRoles(next);
+                      }}
+                        className={`flex items-center gap-2 p-2 rounded-md text-sm border ${selected ? 'border-familia-400 bg-familia-500/5' : 'border-transparent hover:bg-[var(--bg-card-hover)]'}`}>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-lg`}>
+                          {role.emoji}
+                        </div>
+                        <div className="truncate">{role.label}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Quick Match CTA */}
               <motion.div className="glass-card text-center relative overflow-hidden"
                 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
@@ -236,7 +404,12 @@ export default function MatchingPage() {
                   <p className="text-muted text-sm mb-4 max-w-md mx-auto">
                     Let our AI find the perfect person for you based on preferences, language, and culture.
                   </p>
-                  <motion.button onClick={() => { setMode('quick-match'); setMatchStep('select-role'); }}
+                  <motion.button onClick={() => {
+                    // Prefill quick-match role selection from user's offered roles
+                    setPreferredRoles(offeredRoles || []);
+                    if ((offeredRoles || []).length > 0) setMyRole(offeredRoles[0]);
+                    setMode('quick-match'); setMatchStep('select-role');
+                  }}
                     className="btn-primary inline-flex items-center gap-2"
                     whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                     <Search className="w-4 h-4" /> Start Quick Match <ArrowRight className="w-4 h-4" />
