@@ -67,6 +67,14 @@ export default function FamilyRoomsPage() {
   const [newRoomDesc, setNewRoomDesc] = useState('');
   const [newRoomType, setNewRoomType] = useState('general');
   const [newRoomMaxMembers, setNewRoomMaxMembers] = useState(8);
+  // Join codes UI
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [isJoiningCode, setIsJoiningCode] = useState(false);
+  const [showCodesModal, setShowCodesModal] = useState(false);
+  const [roomCodes, setRoomCodes] = useState<any[]>([]);
+  const [isCreatingCode, setIsCreatingCode] = useState(false);
+  const [newCodeMaxUses, setNewCodeMaxUses] = useState<number | null>(null);
+  const [newCodeExpiresAt, setNewCodeExpiresAt] = useState<string | null>(null);
 
   useEffect(() => {
     const loadRooms = async () => {
@@ -82,6 +90,65 @@ export default function FamilyRoomsPage() {
     };
     loadRooms();
   }, []);
+
+  const joinWithCode = async (code: string) => {
+    if (!code.trim()) return;
+    setIsJoiningCode(true);
+    try {
+      const resp = await api.joinWithCode(code.trim());
+      toast.success('Joined room successfully');
+      // Refresh rooms list
+      const data = await api.getRooms();
+      setRooms(data.rooms || []);
+      setJoinCodeInput('');
+    } catch (err: any) {
+      console.error('Failed to join with code:', err);
+      toast.error(err.message || 'Failed to join with code');
+    } finally {
+      setIsJoiningCode(false);
+    }
+  };
+
+  const openCodesModal = async (room: FamilyRoom) => {
+    setSelectedRoom(room);
+    setShowCodesModal(true);
+    try {
+      const res = await api.listJoinCodes(room.id);
+      setRoomCodes(res.codes || []);
+    } catch (err: any) {
+      console.error('Failed to load join codes:', err);
+      toast.error(err.message || 'Failed to load join codes');
+    }
+  };
+
+  const createCode = async () => {
+    if (!selectedRoom) return;
+    setIsCreatingCode(true);
+    try {
+      const payload: any = {};
+      if (newCodeMaxUses) payload.max_uses = newCodeMaxUses;
+      if (newCodeExpiresAt) payload.expires_at = newCodeExpiresAt;
+      const res = await api.createJoinCode(selectedRoom.id, payload);
+      toast.success('Join code created');
+      setRoomCodes(prev => [res.join_code, ...prev]);
+      setNewCodeMaxUses(null);
+      setNewCodeExpiresAt(null);
+    } catch (err: any) {
+      console.error('Failed to create join code:', err);
+      toast.error(err.message || 'Failed to create join code');
+    } finally {
+      setIsCreatingCode(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('Copied to clipboard');
+    } catch (e) {
+      toast.error('Copy failed');
+    }
+  };
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -256,6 +323,24 @@ export default function FamilyRoomsPage() {
         <AnimatePresence mode="wait">
           {view === 'list' && (
             <motion.div key="list" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}>
+              <div className="glass-card mb-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    placeholder="Join with invite code"
+                    value={joinCodeInput}
+                    onChange={(e) => setJoinCodeInput(e.target.value)}
+                    className="input-familia flex-1"
+                  />
+                  <button
+                    onClick={() => joinWithCode(joinCodeInput)}
+                    disabled={isJoiningCode || !joinCodeInput.trim()}
+                    className={`px-4 py-2 rounded-xl text-sm ${joinCodeInput.trim() ? 'bg-gradient-to-br from-familia-500 to-heart-500 text-white' : 'bg-[var(--bg-card)] text-muted'}`}
+                  >
+                    {isJoiningCode ? 'Joining...' : 'Join'}
+                  </button>
+                </div>
+                <div className="text-[11px] text-muted mt-2">Have an invite code? Paste it here to join a room instantly.</div>
+              </div>
               {isLoading ? (
                 <div className="text-center py-12">
                   <Loader2 className="w-8 h-8 mx-auto animate-spin text-familia-400 mb-4" />
@@ -379,6 +464,11 @@ export default function FamilyRoomsPage() {
           {view === 'chat' && selectedRoom && (
             <motion.div key="chat" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="flex flex-col h-[calc(100vh-200px)]">
               <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+                {selectedRoom.is_moderator && (
+                  <div className="flex justify-end mb-2">
+                    <button onClick={() => openCodesModal(selectedRoom)} className="text-xs px-3 py-1 rounded-lg bg-[var(--bg-card)] border border-themed hover:bg-[var(--bg-card-hover)]">Manage Invite Codes</button>
+                  </div>
+                )}
                 {messages.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageCircle className="w-12 h-12 mx-auto mb-4 text-muted opacity-30" />
@@ -444,6 +534,43 @@ export default function FamilyRoomsPage() {
               <button onClick={leaveRoom} className="mt-4 text-xs text-red-400 hover:text-red-300 transition">
                 Leave this room
               </button>
+              {/* Invite Codes Modal */}
+              {showCodesModal && selectedRoom && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/40" onClick={() => setShowCodesModal(false)} />
+                  <div className="relative w-full max-w-2xl mx-4">
+                    <div className="glass-card p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold">Invite Codes — {selectedRoom.room_name}</h3>
+                        <button className="text-sm text-muted" onClick={() => setShowCodesModal(false)}>Close</button>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <input type="number" placeholder="Max uses (optional)" value={newCodeMaxUses ?? ''} onChange={(e) => setNewCodeMaxUses(e.target.value ? parseInt(e.target.value) : null)} className="input-familia" />
+                          <input type="datetime-local" value={newCodeExpiresAt ?? ''} onChange={(e) => setNewCodeExpiresAt(e.target.value || null)} className="input-familia" />
+                          <button onClick={createCode} disabled={isCreatingCode} className="btn-primary">{isCreatingCode ? 'Creating...' : 'Create'}</button>
+                        </div>
+                        <div className="text-[12px] text-muted">Active codes for this room:</div>
+                        <div className="space-y-2">
+                          {roomCodes.length === 0 ? (
+                            <div className="text-sm text-muted">No codes yet</div>
+                          ) : roomCodes.map((c) => (
+                            <div key={c.id} className="flex items-center justify-between p-2 border rounded">
+                              <div>
+                                <div className="font-mono text-sm">{c.code}</div>
+                                <div className="text-[11px] text-muted">uses: {c.uses}/{c.max_uses ?? '∞'} · {c.expires_at ? new Date(c.expires_at).toLocaleString() : 'no expiry'}</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => copyToClipboard(c.code)} className="px-3 py-1 text-sm bg-[var(--bg-card)] border rounded">Copy</button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

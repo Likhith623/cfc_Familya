@@ -2901,6 +2901,9 @@ video {
 .text-right {
   text-align: right;
 }
+.font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
 .\!text-\[9px\] {
   font-size: 9px !important;
 }
@@ -2965,6 +2968,9 @@ video {
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem;
+}
+.text-\[12px\] {
+  font-size: 12px;
 }
 .font-black {
   font-weight: 900;

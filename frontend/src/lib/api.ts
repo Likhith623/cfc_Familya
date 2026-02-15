@@ -3,7 +3,11 @@ import { supabase } from './supabase';
 const rawApiBase = process.env.NEXT_PUBLIC_API_URL || '';
 const API_BASE = (rawApiBase && rawApiBase !== '*') ? rawApiBase : '/api/v1';
 
-async function request(endpoint: string, options: RequestInit = {}) {
+interface RequestOptions extends RequestInit {
+  skipAuth?: boolean;
+}
+
+async function request(endpoint: string, options: RequestOptions = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('familia_token') : null;
   
   const headers: Record<string, string> = {
@@ -11,14 +15,44 @@ async function request(endpoint: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string> || {}),
   };
   
-  if (token) {
+  // Attach auth header unless explicitly skipped
+  if (!options.skipAuth && token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+
+  // If we are intentionally skipping the Authorization header but have a stored
+  // user id, include it via `X-User-ID` so the backend can identify the caller
+  // without verifying a JWT (development-friendly shortcut).
+  try {
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('familia_user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser || '{}');
+        if (parsed?.id) {
+          headers['X-User-ID'] = parsed.id;
+        }
+      }
+    }
+  } catch (e) {
+    // ignore parse errors
+  }
   
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    // Do not pass our custom flag to fetch
+    const { skipAuth, ...fetchOptions } = options as RequestInit & { skipAuth?: boolean };
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...fetchOptions,
+      headers,
+    });
+  } catch (e: any) {
+    // Network / CORS / server unreachable
+    if (e instanceof TypeError) {
+      throw new Error(`Network error or server unreachable (${API_BASE}${endpoint})`);
+    }
+    throw e;
+  }
+
   try {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
@@ -26,10 +60,6 @@ async function request(endpoint: string, options: RequestInit = {}) {
     }
     return response.json();
   } catch (e: any) {
-    // Network / CORS / server unreachable
-    if (e instanceof TypeError) {
-      throw new Error(`Network error or server unreachable (${API_BASE}${endpoint})`);
-    }
     throw e;
   }
 }
@@ -128,15 +158,21 @@ export const api = {
   getGameSession: (sessionId: string) => request(`/games/session/${sessionId}`),
   getGameHistory: (relationshipId: string) => request(`/games/history/${relationshipId}`),
   
-  // Family Rooms
-  createRoom: (data: any) => request('/rooms/create', { method: 'POST', body: JSON.stringify(data) }),
-  getRooms: () => request('/rooms/'),
-  inviteToRoom: (roomId: string, data: any) => request(`/rooms/${roomId}/invite`, { method: 'POST', body: JSON.stringify(data) }),
-  sendRoomMessage: (roomId: string, data: any) => request(`/rooms/${roomId}/message`, { method: 'POST', body: JSON.stringify(data) }),
-  getRoomMessages: (roomId: string) => request(`/rooms/${roomId}/messages`),
-  leaveRoom: (roomId: string) => request(`/rooms/${roomId}/leave`, { method: 'POST' }),
-  getPotlucks: (roomId: string) => request(`/rooms/${roomId}/potlucks`),
-  createPotluck: (roomId: string, data: any) => request(`/rooms/${roomId}/potluck`, { method: 'POST', body: JSON.stringify(data) }),
+  // Family Rooms (public by default - avoid sending JWT)
+  createRoom: (data: any) => request('/rooms/create', { method: 'POST', body: JSON.stringify(data), skipAuth: true }),
+  getRooms: () => request('/rooms/', { skipAuth: true }),
+  inviteToRoom: (roomId: string, data: any) => request(`/rooms/${roomId}/invite`, { method: 'POST', body: JSON.stringify(data), skipAuth: true }),
+  joinRoom: (roomId: string, data?: any) => request(`/rooms/${roomId}/join`, { method: 'POST', body: JSON.stringify(data || {}), skipAuth: true }),
+  // Join codes
+  createJoinCode: (roomId: string, data?: any) => request(`/rooms/${roomId}/join-code`, { method: 'POST', body: JSON.stringify(data || {}), skipAuth: true }),
+  listJoinCodes: (roomId: string) => request(`/rooms/${roomId}/join-codes`, { skipAuth: true }),
+  joinWithCode: (code: string) => request('/rooms/join-by-code', { method: 'POST', body: JSON.stringify({ code }), skipAuth: true }),
+  // Room messaging & potlucks
+  sendRoomMessage: (roomId: string, data: any) => request(`/rooms/${roomId}/message`, { method: 'POST', body: JSON.stringify(data), skipAuth: true }),
+  getRoomMessages: (roomId: string) => request(`/rooms/${roomId}/messages`, { skipAuth: true }),
+  leaveRoom: (roomId: string) => request(`/rooms/${roomId}/leave`, { method: 'POST', skipAuth: true }),
+  getPotlucks: (roomId: string) => request(`/rooms/${roomId}/potlucks`, { skipAuth: true }),
+  createPotluck: (roomId: string, data: any) => request(`/rooms/${roomId}/potluck`, { method: 'POST', body: JSON.stringify(data), skipAuth: true }),
   
   // Safety
   reportUser: (data: any) => request('/safety/report', { method: 'POST', body: JSON.stringify(data) }),

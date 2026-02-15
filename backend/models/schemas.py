@@ -124,6 +124,27 @@ class RoomMessageRequest(BaseModel):
     original_language: Optional[str] = None
 
 
+class JoinRoomRequest(BaseModel):
+    """Join a room by username (optional) or join as the authenticated user.
+
+    - If `username` is provided the server will look up the profile with that
+      username and add that user to the room (requires the caller to be a
+      moderator/member depending on your policy).
+    - If `username` is omitted the currently authenticated user will be added.
+    """
+    username: Optional[str] = None
+    role_in_room: Optional[str] = "member"
+
+
+class CreateJoinCodeRequest(BaseModel):
+    max_uses: Optional[int] = None
+    expires_at: Optional[str] = None  # ISO timestamp
+
+
+class JoinByCodeRequest(BaseModel):
+    code: str
+
+
 # ── Cultural Potluck ──────────────────────────────────
 class CreatePotluckRequest(BaseModel):
     room_id: str
