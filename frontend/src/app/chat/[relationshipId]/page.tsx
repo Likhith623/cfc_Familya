@@ -35,6 +35,9 @@ export default function ChatPage() {
   const [showCulturalNote, setShowCulturalNote] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(true);
+  const [translations, setTranslations] = useState<Record<string, { text?: string; loading?: boolean; error?: string }>>({});
+  const [translationApiStatus, setTranslationApiStatus] = useState<'unknown' | 'ok' | 'bad'>('unknown');
+  const [translationApiError, setTranslationApiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -85,6 +88,37 @@ export default function ChatPage() {
   useEffect(() => { scrollToBottom(); }, [messages]);
   useEffect(() => { if (!isLoading) inputRef.current?.focus(); }, [isLoading]);
 
+  // Proactively validate translation backend (which uses the server-side Google key) once on mount.
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.getLanguages();
+        if (res && res.languages) {
+          setTranslationApiStatus('ok');
+          setTranslationApiError(null);
+        } else {
+          setTranslationApiStatus('bad');
+          setTranslationApiError('Translation service unavailable');
+        }
+      } catch (err: any) {
+        setTranslationApiStatus('bad');
+        setTranslationApiError(err.message || 'Translation service error');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-translate incoming partner messages when enabled
+  useEffect(() => {
+    if (!autoTranslate || !user) return;
+    for (const msg of messages) {
+      if (msg.sender_id === user.id) continue;
+      if (translations[msg.id]?.text || translations[msg.id]?.loading) continue;
+      void translateMessageById(msg.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, autoTranslate, user?.id]);
+
   const sendMessage = async () => {
     if (!input.trim() || isSending || !user) return;
     const text = input.trim();
@@ -123,6 +157,74 @@ export default function ChatPage() {
 
   const toggleTranslation = (msgId: string) => {
     setShowTranslation(p => ({ ...p, [msgId]: !p[msgId] }));
+    // If we don't have a cached translation, trigger one when user opens
+    if (!translations[msgId]) {
+      void translateMessageById(msgId);
+    }
+  };
+
+  // Map common language names to ISO codes (fallbacks).
+  const mapLanguageToCode = (lang: string | undefined) => {
+    if (!lang) return 'en';
+    const l = lang.toLowerCase();
+    const map: Record<string, string> = {
+      english: 'en', spanish: 'es', french: 'fr', german: 'de', italian: 'it', portuguese: 'pt', russian: 'ru', chinese: 'zh', 'simplified chinese': 'zh-CN', hindi: 'hi', arabic: 'ar', japanese: 'ja', korean: 'ko'
+    };
+    if (map[l]) return map[l];
+    // If already looks like a code (2 or 5 chars like zh-CN), return it
+    if (/^[a-z]{2}(-[A-Z]{2})?$/.test(lang)) return lang;
+    return 'en';
+  };
+
+  const translateMessageById = async (msgId: string) => {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg || !user) return;
+    // Avoid re-translation if already loading/translated
+    if (translations[msgId]?.loading || translations[msgId]?.text) return;
+
+    // Ensure backend translation service is available
+    if (translationApiStatus === 'unknown') {
+      try {
+        const langs = await api.getLanguages();
+        if (langs && langs.languages) {
+          setTranslationApiStatus('ok');
+          setTranslationApiError(null);
+        } else {
+          setTranslationApiStatus('bad');
+          setTranslationApiError('Translation service unavailable');
+        }
+      } catch (err: any) {
+        setTranslationApiStatus('bad');
+        setTranslationApiError(err.message || 'Translation service error');
+      }
+    }
+
+    if (translationApiStatus === 'bad') {
+      setTranslations(prev => ({ ...prev, [msgId]: { error: translationApiError || 'Translation API unavailable' } }));
+      return;
+    }
+
+    // Determine target language: prefer explicit user.preferred_language, then first user.languages entry
+    const preferredLangRaw = (user as any)?.preferred_language || (user as any)?.languages?.[0];
+    const target = mapLanguageToCode(preferredLangRaw) || 'en';
+
+    setTranslations(prev => ({ ...prev, [msgId]: { loading: true } }));
+    try {
+      const res = await api.translate(msg.original_text, undefined, target);
+      const translated = res?.translated_text || res?.translatedText || res?.data?.translations?.[0]?.translatedText;
+      const cultural_note = res?.cultural_note || res?.culturalNote || null;
+      const has_idiom = res?.has_idiom || false;
+      const idiom_explanation = res?.idiom_explanation || res?.idiomExplanation || null;
+
+      if (!translated) throw new Error('No translation returned');
+
+      setTranslations(prev => ({ ...prev, [msgId]: { text: translated } }));
+      // Merge translated fields back into message state so existing UI (cultural note, idiom) works
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, translated_text: translated, cultural_note, has_idiom, idiom_explanation } : m));
+    } catch (err: any) {
+      console.error('Translation failed:', err);
+      setTranslations(prev => ({ ...prev, [msgId]: { error: err.message || 'Translation failed' } }));
+    }
   };
 
   const fmtTime = (s: string) => new Date(s).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -309,28 +411,39 @@ export default function ChatPage() {
                         )}
                       </span>
 
-                      {hasTranslation && !isMe && (
-                        <button
-                          onClick={() => toggleTranslation(msg.id)}
-                          className="flex items-center gap-1 mt-1.5 text-[10px] text-familia-400/60 hover:text-familia-400 transition"
-                        >
-                          <Languages className="w-3 h-3" />
-                          {showTrans ? 'Hide' : 'Translate'}
-                        </button>
-                      )}
+                      {/* Translation UI: always offer translate for partner messages. Use cached translations, show loading/error, support auto-translate. */}
+                      {!isMe && (
+                        <div className="mt-1">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleTranslation(msg.id)}
+                              className="flex items-center gap-1 text-[10px] text-familia-400/60 hover:text-familia-400 transition"
+                            >
+                              <Languages className="w-3 h-3" />
+                              {showTranslation[msg.id] ? 'Hide' : 'Translate'}
+                            </button>
+                            {translations[msg.id]?.loading && (
+                              <span className="text-[10px] text-muted">Translating…</span>
+                            )}
+                            {translations[msg.id]?.error && (
+                              <span className="text-[10px] text-rose-400">{translations[msg.id]?.error}</span>
+                            )}
+                          </div>
 
-                      <AnimatePresence>
-                        {showTrans && hasTranslation && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="mt-1 pt-1 border-t border-white/10"
-                          >
-                            <p className="text-xs text-muted italic">{msg.translated_text}</p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                          <AnimatePresence>
+                            {(autoTranslate && translations[msg.id]?.text) || (showTranslation[msg.id] && translations[msg.id]?.text) ? (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="mt-1 pt-1 border-t border-white/10"
+                              >
+                                <p className="text-xs text-muted italic">{translations[msg.id].text}</p>
+                              </motion.div>
+                            ) : null}
+                          </AnimatePresence>
+                        </div>
+                      )}
 
                       {msg.cultural_note && (
                         <button
@@ -412,6 +525,9 @@ export default function ChatPage() {
             >
               <Globe className="w-3 h-3" /> {autoTranslate ? 'Auto \u2713' : 'Auto \u2717'}
             </button>
+            {translationApiStatus === 'bad' && (
+              <span className="text-rose-400 text-[11px] ml-2">Translate key invalid</span>
+            )}
           </div>
 
           <div className="chat-input-bar">
